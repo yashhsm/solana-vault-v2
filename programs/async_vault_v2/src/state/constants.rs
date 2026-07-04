@@ -1,0 +1,17 @@
+pub const VAULT_CONFIG_SEED: &[u8] = b"vault";
+pub const RESERVE_CONFIG_SEED: &[u8] = b"reserve";
+pub const PENDING_VAULT_SEED: &[u8] = b"pending";
+pub const ASSET_CONFIG_SEED: &[u8] = b"asset";
+pub const ASSET_RESERVE_SEED: &[u8] = b"asset_reserve";
+pub const ASSET_PENDING_SEED: &[u8] = b"asset_pending";
+pub const VENUE_ENTRY_SEED: &[u8] = b"venue";
+pub const VAULT_VENUE_SEED: &[u8] = b"vault_venue";
+pub const POSITION_SEED: &[u8] = b"position";
+pub const POSITION_TOKEN_SEED: &[u8] = b"position_token";
+pub const TRANCHE_CONFIG_SEED: &[u8] = b"tranches";
+pub const PENDING_SHARES_VAULT_SEED: &[u8] = b"pending_shares";
+pub const REQUEST_SEED: &[u8] = b"request";
+pub const INSTANT_USER_LIMIT_SEED: &[u8] = b"instant_user";
+pub const MAX_APPROVED_ASSETS: u8 = 8;
+pub const MAX_VENUE_DISCRIMINATORS: usize = 8;
+pub const MAX_VENUE_DISCRIMINATOR_BYTES: usize = MAX_VENUE_DISCRIMINATORS * 8;

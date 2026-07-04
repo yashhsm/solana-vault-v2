@@ -4,14 +4,14 @@ export function AppFooter() {
             <p>
                 Built on the{' '}
                 <a
-                    href="https://github.com/solana-foundation/vault"
+                    href="https://github.com/sendai/solana-vault-v2"
                     className="underline-offset-4 hover:underline"
                     target="_blank"
                     rel="noreferrer"
                 >
                     Vault Standard Suite
                 </a>{' '}
-                by the Solana Foundation. This demo is unaffiliated and unaudited.
+                from solana-foundation/vault. This demo is unaffiliated and unaudited.
             </p>
         </footer>
     );

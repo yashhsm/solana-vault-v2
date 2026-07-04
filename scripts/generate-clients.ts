@@ -15,18 +15,18 @@ import { createFromRoot, deduplicateIdenticalDefinedTypesVisitor, updateDefinedT
 
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-const idl = JSON.parse(readFileSync(join(projectRoot, 'idl/async_vault.json'), 'utf-8')) as AnchorIdl;
+const idl = JSON.parse(readFileSync(join(projectRoot, 'idl/async_vault_v2.json'), 'utf-8')) as AnchorIdl;
 const codama = createFromRoot(rootNodeFromAnchor(idl));
 codama.update(deduplicateIdenticalDefinedTypesVisitor());
 
-const rustCrateFolder = join(projectRoot, 'clients/rust/async_vault');
+const rustCrateFolder = join(projectRoot, 'clients/rust/async_vault_v2');
 codama.accept(
     renderRustVisitor(rustCrateFolder, {
         formatCode: false,
         syncCargoToml: false,
     }),
 );
-execFileSync('cargo', ['+nightly', 'fmt', '-p', 'async-vault-client'], { cwd: projectRoot, stdio: 'inherit' });
+execFileSync('cargo', ['+nightly', 'fmt', '-p', 'async-vault-v2-client'], { cwd: projectRoot, stdio: 'inherit' });
 console.log('Rust client generated at:', join(rustCrateFolder, 'src/generated'));
 
 codama.update(updateDefinedTypesVisitor({ RequestArgs: { name: 'CreateRequestArgs' } }));

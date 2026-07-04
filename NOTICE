@@ -1,0 +1,12 @@
+Solana Vault V2
+
+Based on solana-foundation/vault (MIT), commit
+c667cf8079d90f79fc0daf32d332a3693b37e6c6.
+
+Upstream audited-through commit:
+ce2b5483de53cd015efbbdea70ecec75d976bb08.
+
+Extended by SendAI.
+
+This repository is a community fork. It is not an official Solana Foundation
+release and does not imply Solana Foundation endorsement.

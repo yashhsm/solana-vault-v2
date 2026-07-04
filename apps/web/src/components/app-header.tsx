@@ -120,7 +120,7 @@ export function AppHeader() {
 
                 <div className="hidden items-center gap-2 md:flex">
                     <a
-                        href="https://github.com/solana-foundation/vault"
+                        href="https://github.com/sendai/solana-vault-v2"
                         target="_blank"
                         rel="noreferrer"
                         className="text-muted-foreground transition hover:text-foreground"

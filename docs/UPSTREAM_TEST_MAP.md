@@ -1,0 +1,45 @@
+# Upstream Test Map
+
+The upstream LiteSVM suite was ported mechanically from
+`integration-tests/src/async_vault` to `integration-tests/src/async_vault_v2`.
+The helper `set_up_async_vault_v2` disables `require_fresh_nav` for upstream
+parity tests unless a V2-specific test opts into strict freshness.
+
+| Upstream area               | V2 location                                                      | Adaptation                                                                                        |
+| --------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `approve_request.rs`        | `integration-tests/src/async_vault_v2/approve_request.rs`        | Imports/builders renamed; added strict fresh-NAV regression.                                      |
+| `cancel_request.rs`         | `integration-tests/src/async_vault_v2/cancel_request.rs`         | Imports/builders renamed; deposit cancellations release pending cap reservations.                 |
+| `claim.rs`                  | `integration-tests/src/async_vault_v2/claim.rs`                  | Imports/builders renamed.                                                                         |
+| `create_deposit_request.rs` | `integration-tests/src/async_vault_v2/create_deposit_request.rs` | Imports/builders renamed; added deposit-cap negative test.                                        |
+| `create_redeem_request.rs`  | `integration-tests/src/async_vault_v2/create_redeem_request.rs`  | Imports/builders renamed.                                                                         |
+| `create_vault.rs`           | `integration-tests/src/async_vault_v2/create_vault.rs`           | Imports/builders renamed; asserts V2 role defaults and strict NAV default.                        |
+| `fee_extensions.rs`         | `integration-tests/src/async_vault_v2/fee_extensions.rs`         | Imports/builders renamed.                                                                         |
+| `initialize_vault.rs`       | `integration-tests/src/async_vault_v2/initialize_vault.rs`       | Imports/builders renamed.                                                                         |
+| `reject_request.rs`         | `integration-tests/src/async_vault_v2/reject_request.rs`         | Imports/builders renamed; deposit rejections release pending cap reservations.                    |
+| `set_operator.rs`           | `integration-tests/src/async_vault_v2/set_operator.rs`           | Imports/builders renamed.                                                                         |
+| `update_async_vault.rs`     | `integration-tests/src/async_vault_v2/update_async_vault.rs`     | Imports/builders renamed; added breaker pause-only test.                                          |
+| `update_authority.rs`       | `integration-tests/src/async_vault_v2/update_authority.rs`       | Imports/builders renamed; accept updates curator alias and default-coupled roles.                 |
+| `update_vault_nav.rs`       | `integration-tests/src/async_vault_v2/update_vault_nav.rs`       | Imports/builders renamed; added NAV delta-bound and unsupported-config negative tests.            |
+| `withdraw_assets.rs`        | `integration-tests/src/async_vault_v2/withdraw_assets.rs`        | Imports/builders renamed; adds externally managed withdrawal and venue-approval gate regressions. |
+| Extension tests             | `integration-tests/src/async_vault_v2/extenstions/*.rs`          | Imports/builders renamed; subscription queue cancellation releases pending cap reservations.      |
+| CU map guard                | `integration-tests/src/cu_map_guard.rs`                          | Updated IDL path and program ID symbol.                                                           |
+
+No upstream test module was intentionally dropped.
+
+## V2-Added Coverage
+
+These modules are additive V2 coverage and are not direct upstream ports:
+
+| V2 area                      | Test location                                                                                                                                                                           | Coverage summary                                                                                                                                                                           |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| External-withdrawal opt-in   | `integration-tests/src/async_vault_v2/extenstions/externally_managed_withdrawals.rs`, `integration-tests/src/async_vault_v2/withdraw_assets.rs`                                         | Creation-time extension gating for `withdraw_assets`, duplicate/late init, curator authorization, active venue approval, and paused-venue rejection.                                       |
+| Instant settlement           | `integration-tests/src/async_vault_v2/instant_settlement.rs`                                                                                                                            | Primary instant deposit/redeem, per-transaction thresholds, per-user rolling limits, stale NAV/liquidity failures, tranche rejection, and Token-2022 transfer-fee re-enable regressions.   |
+| Multi-asset custody          | `integration-tests/src/async_vault_v2/vault_assets.rs`                                                                                                                                  | Secondary asset add/remove, caps, async deposit/redeem lifecycle, reservation release, and wrong-account failures.                                                                         |
+| Timelocked extension updates | `integration-tests/src/async_vault_v2/extenstions/extension_timelock.rs`                                                                                                                | Queue/execute/cancel for mutable non-fee TLV extension values, ETA enforcement, stale-curator rejection, authority checks, and invalid argument shapes.                                    |
+| Protocol fee splits          | `integration-tests/src/async_vault_v2/extenstions/fees.rs`, `integration-tests/src/async_vault_v2/instant_settlement.rs`, `integration-tests/src/async_vault_v2/update_vault_nav.rs`    | Vault-level protocol fee bps/recipient updates and split behavior for deposit, withdrawal, primary instant-redemption, and single-tranche performance fees, including wrong-owner failure. |
+| Venue registry and positions | `integration-tests/src/async_vault_v2/venue_registry.rs`                                                                                                                                | Venue registration/approval, pause/timelock failures, primary and approved-secondary position deploy/pull, manager/hot-manager authorization, rolling buckets, and zero-balance removal.   |
+| Tranches                     | `integration-tests/src/async_vault_v2/tranches.rs`                                                                                                                                      | Tranche initialization, waterfall NAV updates, tranche-scoped requests, request bounds, junior-ratio guards, and lane-local FIFO queues.                                                   |
+| Program property tests       | `programs/async_vault_v2/src/state/async_vault_v2.rs`, `programs/async_vault_v2/src/instructions/update_nav.rs`, `libs/vault_common/src/fee.rs`, `programs/async_vault_v2/src/utils.rs` | Rolling-limit accounting, secondary position ledger conservation, tranche waterfall conservation, share/asset round-trips, and fee rounding invariants.                                    |
+
+Remaining Phase 2-6 requirements that are intentionally not covered yet are
+tracked in `docs/SPEC_COVERAGE.md` and `REPORT.md`.

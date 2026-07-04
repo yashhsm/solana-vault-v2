@@ -74,6 +74,9 @@ importers:
       '@radix-ui/react-dropdown-menu':
         specifier: ^2.1.16
         version: 2.1.16(@types/react-dom@19.2.3(@types/react@19.2.16))(@types/react@19.2.16)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@sendai/solana-vault-v2':
+        specifier: workspace:*
+        version: link:../../clients/typescript
       '@solana-program/system':
         specifier: ^0.12.0
         version: 0.12.2(@solana/kit@6.10.0(typescript@5.9.3))
@@ -92,9 +95,6 @@ importers:
       '@solana/kit':
         specifier: ^6.10.0
         version: 6.10.0(typescript@5.9.3)
-      '@solana/vault':
-        specifier: workspace:*
-        version: link:../../clients/typescript
       '@tanstack/react-query':
         specifier: ^5.90.20
         version: 5.101.0(react@19.2.7)

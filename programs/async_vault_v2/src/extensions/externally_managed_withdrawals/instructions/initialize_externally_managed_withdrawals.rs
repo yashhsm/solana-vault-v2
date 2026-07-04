@@ -1,0 +1,37 @@
+use anchor_lang::prelude::*;
+
+use crate::{
+    error::AsyncVaultError,
+    extensions::{
+        externally_managed_withdrawals::ExternallyManagedWithdrawals, init_vault_extension,
+        VaultExtension,
+    },
+    state::Vault,
+};
+
+#[derive(Accounts)]
+pub struct InitializeExternallyManagedWithdrawals<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        realloc = vault.to_account_info().data_len() + ExternallyManagedWithdrawals::TLV_SIZE,
+        realloc::payer = payer,
+        realloc::zero = false,
+        constraint = authority.key() == vault.curator @ AsyncVaultError::UnauthorizedSigner,
+    )]
+    pub vault: Account<'info, Vault>,
+
+    pub system_program: Program<'info, System>,
+}
+
+pub fn handler(ctx: Context<InitializeExternallyManagedWithdrawals>) -> Result<()> {
+    init_vault_extension(
+        &ctx.accounts.vault.to_account_info(),
+        &ctx.accounts.vault,
+        &ExternallyManagedWithdrawals { enabled: 1 },
+    )
+}

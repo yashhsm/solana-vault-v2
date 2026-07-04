@@ -18,9 +18,9 @@ jobs:
           install-pnpm: 'false'
           rust-cache-key: 'format'
       - name: Check Rust formatting
-        run: cargo +nightly fmt -p async_vault -p vault_common -p integration-tests -- --check
+        run: cargo +nightly fmt -p async_vault_v2 -p vault_common -p integration-tests -- --check
       - name: Run Clippy
-        run: cargo clippy -p async_vault -p vault_common
+        run: cargo clippy -p async_vault_v2 -p vault_common -p integration-tests
 
   typescript-format:
     runs-on: ubuntu-latest
@@ -35,5 +35,5 @@ jobs:
       - run: pnpm run format:check
       - run: pnpm run generate-clients
       - run: pnpm lint
-      - run: pnpm --filter @solana/vault-program-web typecheck
-      - run: pnpm --filter @solana/vault-program-web build
+      - run: pnpm --filter @sendai/solana-vault-v2-program-web typecheck
+      - run: pnpm --filter @sendai/solana-vault-v2-program-web build

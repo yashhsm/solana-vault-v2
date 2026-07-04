@@ -1,18 +1,21 @@
 # Audit Status
 
-Last updated: 2026-06-22
+Last updated: 2026-07-04
 
-> **Note**: This is a reference implementation. The README security notice
-> still applies — review and audit before deploying to production.
+> **Note**: Solana Vault V2 is an unaudited community fork. The upstream audit
+> is provenance evidence only; it does not audit the V2 changes.
 
 ## Current Baseline
 
 - Auditor: Cantina (APEX)
 - Report: `audits/apex-scan-june-22-2026.pdf`
 - Audited-through commit: `ce2b5483de53cd015efbbdea70ecec75d976bb08`
+- Fork base commit: `c667cf8079d90f79fc0daf32d332a3693b37e6c6`
+- V2 program ID: `3Y4rpSYqrW9JRuiS3YosEXSSYHai4sFH3XMzAQmkNzFg`
 - Compare audited baseline delta: https://github.com/solana-foundation/vault/compare/ce2b5483de53cd015efbbdea70ecec75d976bb08...main
 
 Audit scope is commit-based. The audited baseline is the audited-through commit.
+All V2 changes after the fork base are outside the Cantina APEX audit scope.
 
 ## Branch and Release Model
 

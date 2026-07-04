@@ -24,7 +24,7 @@ jobs:
       - name: Check the committed IDL is up to date
         run: |
           if [ -n "$(git status --porcelain idl/)" ]; then
-            echo "::error::idl/async_vault.json is out of date! Run: just generate-idl"
+            echo "::error::idl/async_vault_v2.json is out of date! Run: just generate-idl"
             git --no-pager diff idl/
             exit 1
           fi

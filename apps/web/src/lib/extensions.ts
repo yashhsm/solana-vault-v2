@@ -1,4 +1,4 @@
-import { getVaultDecoder, type Vault } from '@solana/vault';
+import { getVaultDecoder, type Vault } from '@sendai/solana-vault-v2';
 
 const TLV_HEADER_SIZE = 4;
 

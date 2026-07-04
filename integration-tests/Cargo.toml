@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dev-dependencies]
-async-vault-client = { path = "../clients/rust/async_vault", features = ["solana-sdk", "litesvm"] }
+async-vault-v2-client = { path = "../clients/rust/async_vault_v2", features = ["solana-sdk", "litesvm"] }
 borsh.workspace = true
 litesvm.workspace = true
 solana-sdk.workspace = true

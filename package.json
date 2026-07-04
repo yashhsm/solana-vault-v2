@@ -1,8 +1,8 @@
 {
-    "name": "async-vault",
+    "name": "async-vault-v2",
     "version": "0.1.0",
-    "description": "Vault Standard Suite",
-    "repository": "git@github.com:solana-foundation/vault.git",
+    "description": "Community Solana Vault V2 fork",
+    "repository": "git@github.com:sendai/solana-vault-v2.git",
     "license": "MIT",
     "scripts": {
         "build": "cd clients/typescript && tsc",
@@ -11,8 +11,8 @@
         "generate-idl": "anchor build --ignore-keys",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
-        "lint": "eslint .",
-        "lint:fix": "eslint . --fix",
+        "lint": "eslint scripts/*.ts clients/typescript/src/index.ts",
+        "lint:fix": "eslint scripts/*.ts clients/typescript/src/index.ts --fix",
         "typecheck": "cd clients/typescript && tsc --noEmit"
     },
     "devDependencies": {

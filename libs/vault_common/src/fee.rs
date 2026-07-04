@@ -1,4 +1,4 @@
-use anchor_lang::prelude::{borsh, AnchorDeserialize, AnchorSerialize, InitSpace};
+use anchor_lang::prelude::{AnchorDeserialize, AnchorSerialize, InitSpace};
 
 use crate::{constants::MAX_BPS, error::VaultMathError};
 
@@ -44,6 +44,7 @@ impl FeeType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn get_fee_percentage_rounds_up() {
@@ -79,5 +80,45 @@ mod tests {
                 .unwrap(),
             42
         );
+    }
+
+    proptest! {
+        #[test]
+        fn percentage_fee_matches_round_up_formula(
+            amount in 0u64..=u64::MAX,
+            bps in 0u16..=MAX_BPS,
+        ) {
+            let fee = FeeType::Percentage { bps }.get_fee(amount).unwrap();
+            let expected = u128::from(amount)
+                .checked_mul(u128::from(bps))
+                .unwrap()
+                .checked_add(9_999)
+                .unwrap()
+                .checked_div(10_000)
+                .unwrap();
+            prop_assert_eq!(u128::from(fee), expected);
+            prop_assert!(fee <= amount);
+            if bps == 0 {
+                prop_assert_eq!(fee, 0);
+            }
+            if bps == MAX_BPS {
+                prop_assert_eq!(fee, amount);
+            }
+        }
+
+        #[test]
+        fn fixed_fee_passes_through_for_any_amount(
+            fixed_amount in 0u64..=u64::MAX,
+            total_amount in 0u64..=u64::MAX,
+        ) {
+            prop_assert_eq!(
+                FeeType::FixedAmount {
+                    amount: fixed_amount,
+                }
+                .get_fee(total_amount)
+                .unwrap(),
+                fixed_amount
+            );
+        }
     }
 }

@@ -47,7 +47,7 @@ export function Home() {
                 <div className="space-y-6">
                     <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs">
                         <span className="size-1.5 rounded-full bg-solana-green" />
-                        <span className="text-muted-foreground">live demo · async_vault on devnet</span>
+                        <span className="text-muted-foreground">live demo · async_vault_v2 on devnet</span>
                     </div>
                     <h1 className="text-balance text-4xl font-semibold leading-tight md:text-6xl">
                         A standard, async{' '}
@@ -57,8 +57,8 @@ export function Home() {
                         primitive for Solana.
                     </h1>
                     <p className="max-w-2xl text-pretty text-base text-muted-foreground md:text-lg">
-                        Walk through the entire deposit → approve → claim lifecycle of the Solana Foundation{' '}
-                        <code className="font-mono text-foreground">async_vault</code> program — including every
+                        Walk through the entire deposit → approve → claim lifecycle of the community{' '}
+                        <code className="font-mono text-foreground">async_vault_v2</code> program — including every
                         extension — without writing a single line of code.
                     </p>
                     <div className="flex flex-wrap items-center gap-3">
@@ -120,7 +120,7 @@ export function Home() {
                         <h3 className="text-2xl font-semibold">Reuse a shared, audited primitive.</h3>
                         <p className="mt-3 text-sm text-muted-foreground">
                             Real-world asset issuers and institutions repeatedly build the same vault primitives.
-                            <code className="mx-1 font-mono text-foreground">async_vault</code> standardizes
+                            <code className="mx-1 font-mono text-foreground">async_vault_v2</code> standardizes
                             subscription / redemption flows so teams can innovate on top instead of forking yet another
                             implementation.
                         </p>

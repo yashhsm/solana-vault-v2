@@ -24,7 +24,7 @@ jobs:
           install-just: 'false'
           install-pnpm: 'false'
           rust-cache-key: 'unit-tests'
-      - run: cargo test -p async_vault -p vault_common
+      - run: cargo test -p async_vault_v2 -p vault_common
 
   integration-tests:
     runs-on: ubuntu-latest

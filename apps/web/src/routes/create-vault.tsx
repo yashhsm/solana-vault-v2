@@ -247,8 +247,8 @@ export function CreateVaultRoute() {
                 <h1 className="mt-1 text-3xl font-semibold">Create a demo vault</h1>
                 <p className="mt-2 text-sm text-muted-foreground">
                     The wizard will mint a synthetic asset, deploy an{' '}
-                    <code className="font-mono text-foreground">async_vault</code> with the extensions you toggle, and
-                    drop you into the authority console.
+                    <code className="font-mono text-foreground">async_vault_v2</code> with the extensions you toggle,
+                    and drop you into the authority console.
                 </p>
             </div>
 

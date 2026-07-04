@@ -2,7 +2,7 @@
 
 This catalogs the feature requests and requirements gathered from ecosystem teams, and for each, how the template handles it — either already implemented in the repo, or the intended approach a team would follow to build it.
 
-The vault is an open-source **base async-vault template**: teams fork it and add the functionality their own use case needs. It's shipped as a template rather than deployed because every team's requirements differ. The base covers the common ground, with optional extensions for frequently shared needs.
+The vault is an open-source **base async-vault-v2 template**: teams fork it and add the functionality their own use case needs. It's shipped as a template rather than deployed because every team's requirements differ. The base covers the common ground, with optional extensions for frequently shared needs.
 
 _Both atomic and async vault models were explored. Async was the model teams actually needed, so the atomic track was dropped — this template and catalog cover the async vault only._
 
@@ -18,7 +18,7 @@ _Both atomic and async vault models were explored. Async was the model teams act
 How the core is approached, before any requested features:
 
 - 🟢 **Shares minted/burned, never transferred** — at each step shares move via mint/burn on the user's account, so transfer-fee-style extensions don't corrupt accounting.
-- 🟢 **Single authority** — one authority signs permissioned actions; transferred in two steps (`InviteNewAuthority` → `AcceptAuthorityInvitation`). Teams needing richer roles point the authority at a PDA from their own RBAC program.
+- 🟢 **Five V2 role fields with upstream-compatible defaults** — `curator`, `manager`, `hot_manager`, `fulfiller`, and `breaker` are stored on the vault. New vaults default all roles to the upstream `authority`; two-step curator transfer rotates any role still equal to the old authority so the previous key does not retain default-coupled powers.
 - 🟢 **Async request lifecycle** — `RequestDeposit`/`RequestRedeem` move funds to a shared `pending_vault` → authority `ApproveRequest` (snapshots NAV into the request) / `RejectRequest` → user/operator `Claim`; `CancelRequest` while pending. Each request is a unique keypair.
 
 ## Deposit / redemption mechanics
@@ -26,24 +26,24 @@ How the core is approached, before any requested features:
 - 🟢 **Let someone act on a user's behalf** — `SetOperator`; the operator can claim/cancel for the user.
 - 🟡 **Auto-pairing of async deposits and redemptions** — an authority instruction that matches an open deposit against an open redemption so they settle against each other at NAV, instead of routing assets through an external strategy. Ecosystem teams flagged that 1:1 netting may have regulatory implications in some jurisdictions; those teams suggested netting against aggregated groups of requests as an alternative.
 - 🟡 **Slippage protection on requests** — intentionally **not** supported: it doesn't fit the async + NAV model, and subscribers are expected to understand the fund. (No integrator workaround intended.)
-- 🟡 **Multi-asset deposits** — let a vault accept more than one deposit asset; possible future extension (current template is single-asset).
+- 🟡 **Multi-asset async lifecycle** — the Phase 2 asset-PDA slice supports curator-approved secondary asset records, token accounts, secondary deposit create/approve/cancel/reject/claim, secondary async redemption create/approve/cancel/reject/claim, per-asset deposit caps, and constrained secondary position deploy/pull accounting. USD-normalized NAV aggregation remains future work.
 - 🟡 **Multi-asset holdings** — unlikely to be needed: in the async model the vault doesn't hold deployed assets — the authority withdraws and allocates them, so holdings live outside the vault.
 
 ## Configurable extensions (opt-in TLV modules)
 
 The most common shared needs, built as toggleable extensions.
 
-| Requested feature                    | Use case                                                       | Approach                                                                   |
-| ------------------------------------ | -------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Deposit / Withdraw fees              | Charge fixed or % (bps) fees                                   | 🟢 Fee extension                                                           |
-| Performance / management fees        | Fee on gains, or accruing over time                            | 🟡 A fee extension beyond the flat deposit/withdraw fees                   |
-| Pausable subscriptions / redemptions | Manual subscription/redemption windows (RWA)                   | 🟢 Pausable extensions                                                     |
-| FIFO subscription / redemption queue | Fair, ordered processing                                       | 🟢 Queue extensions (see fairness note below)                              |
-| Minimum subscription / redemption    | Floor per request                                              | 🟢 Min extensions                                                          |
-| Instant share minting                | Small deposits skip approval, mint instantly under a threshold | 🟡 Spec'd extension; not in template                                       |
-| Subscription lock-up period          | Cooldown after approval before shares are claimable            | 🟡 Spec'd extension; not in template                                       |
-| Partial subscriptions / redemptions  | Authority partially fills, down to a user-set minimum          | 🟡 Spec'd extension (`min_partial_fill` / `partial_fill`); not in template |
-| Vault asset cap                      | Hard cap on total assets (`deposit + balance ≤ cap`)           | 🟡 Spec'd extension; not in template                                       |
+| Requested feature                    | Use case                                                       | Approach                                                                    |
+| ------------------------------------ | -------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Deposit / Withdraw fees              | Charge fixed or % (bps) fees                                   | 🟢 Fee extension                                                            |
+| Performance / management fees        | Fee on gains, or accruing over time                            | 🟡 Single-tranche HWM performance fee implemented; management fees pending  |
+| Pausable subscriptions / redemptions | Manual subscription/redemption windows (RWA)                   | 🟢 Pausable extensions                                                      |
+| FIFO subscription / redemption queue | Fair, ordered processing                                       | 🟢 Queue extensions (see fairness note below)                               |
+| Minimum subscription / redemption    | Floor per request                                              | 🟢 Min extensions                                                           |
+| Instant share minting                | Small deposits skip approval, mint instantly under a threshold | 🟡 Primary non-tranche path implemented with thresholds and per-user limits |
+| Subscription lock-up period          | Cooldown after approval before shares are claimable            | 🟡 Spec'd extension; not in template                                        |
+| Partial subscriptions / redemptions  | Authority partially fills, down to a user-set minimum          | 🟡 Spec'd extension (`min_partial_fill` / `partial_fill`); not in template  |
+| Vault asset cap                      | Hard cap on total assets (`deposit + balance ≤ cap`)           | 🟢 Aggregate cap enforced at request creation and deposit settlement        |
 
 - **FIFO fairness** — pure FIFO is unfair when limits exist and a whale consumes the limit first. A team needing fairness would generalize the queue (granular control), or combine authority partial fills with a max-redemption + withdraw cooldown.
 
@@ -57,8 +57,9 @@ The most common shared needs, built as toggleable extensions.
 ## Running strategies on vault assets & NAV
 
 - 🟢 **Deploy vault assets into a strategy** (e.g. lend/borrow, an off-chain RWA position) — the common "run custom logic / route assets into a downstream protocol" request. In the async model the authority pulls assets out with `WithdrawAssets`, deploys them wherever the strategy lives, and reflects the result by updating NAV. Strategy execution sits outside the vault by design; a virtual `total_asset_balance` keeps accounting correct while assets are deployed.
-- 🟢 **NAV is authority-set** — `UpdateNav` (bumps `nav_version`); `ApproveRequest` snapshots NAV into each request, fixing the conversion rate at approval. Approval requires NAV ≠ 0; the program does not enforce NAV freshness — updating NAV before approving is authority discipline.
-- 🟡 **NAV anomaly / update threshold** — a guard against bad NAV updates; would be a configurable extension (the core can't know what an anomaly is), percentage- or fixed-based.
+- 🟢 **NAV is curator/fulfiller-set in authority-signed mode** — `UpdateNav` bumps `nav_version`, stores update slot/timestamp, and can enforce optional max delta and implied APY guards.
+- 🟢 **Fresh NAV settlement** — `ApproveRequest` defaults to requiring `vault.nav_version > request.nav_update_version`, closing the upstream stale-settlement gap. Tests can disable this per vault when checking pure upstream parity.
+- 🟡 **Oracle NAV modes** — `Oracle` and `Hybrid` are represented in config but rejected by `UpdateVault` until oracle account validation is implemented. They are layout scaffolding, not live controls.
 - 🟡 **Lend/borrow looping, oracle verifiability** — integrator-side: built into whatever strategy the authority runs with the withdrawn assets, not in the template.
 
 ## Compliance / KYC / transfer control
@@ -75,9 +76,33 @@ Mostly integrator-side or composed with other standards.
 
 ## Access control & admin
 
-- 🟢 **Authority handoff** — two-step invite/accept.
-- 🟡 **Complex role-based access** — out of the vault's scope; point the authority at a PDA from an external RBAC program. (A reusable RBAC program has early designs only.)
-- 🟡 **Admin timelocks** — generally out of scope; handled by the external RBAC tooling above. A timelock on authority change was proposed as a low-lift spec'd extension — caveat: a compromised authority can act instantly via `WithdrawAssets`/`UpdateNav` anyway, so a multisig authority remains the real mitigation.
+- 🟢 **Curator handoff** — two-step invite/accept still uses the legacy `authority` field as a curator alias and updates both fields on accept.
+- 🟢 **Breaker asymmetry** — `PauseVault` lets the breaker set `paused = true`; only the curator can unpause through `UpdateVault`.
+- 🟡 **Manager/hot-manager execution** — manager and routine-safe hot-manager deploy/pull are implemented for primary and approved-secondary SPL token-account position stubs. Arbitrary venue CPI execution remains future work.
+- 🟢 **Manager, external-withdrawal, and redemption rolling limits** — implemented as simple epoch windows stored on the `Vault`. Once `rolling_limit_window_slots` is set, primary manager deploy/pull movement, external withdrawals, and gross redeem settlement consume per-window counters and reset when `current_slot >= window_start + window_slots`.
+- 🟢 **Externally managed withdrawal opt-in** — `withdraw_assets` is disabled by default and can only be used by vaults that initialized the `ExternallyManagedWithdrawals` TLV extension before vault initialization. It remains a curator-controlled free-form pull, not the venue registry/CPI boundary.
+- 🟢 **Venue registry state scaffold** — `VenueEntry` PDAs are keyed by `(registry_authority, venue_id)` instead of a singleton first-initializer registry. This avoids a front-running-prone global bootstrap while preserving explicit registry-authority provenance. `VaultVenue` approvals are curator-only metadata and do not authorize CPI execution yet.
+- 🟢 **SPL token-account position stub** — Phase 3 deploy/pull currently moves primary assets only between vault-owned token accounts and verifies exact post-transfer balance deltas before changing `Position.amount`. This provides a safe test adapter without exposing arbitrary CPI or external custody.
+- 🟢 **Per-asset manager rolling buckets** — primary manager deploy/pull uses the shared vault epoch window, while approved-secondary deploy/pull consumes a per-`VaultAsset` epoch bucket under the same configured limit/window.
+- 🟢 **Vault config and extension timelocks** — `timelock_delay_slots` enables `PendingVaultUpdate`, `PendingFeeUpdate`, and `PendingExtensionUpdate` account flows: curator queues serialized args, anyone can execute after `eta_slot`, and the current curator can cancel. Pause/unpause and breaker rotation remain immediate, execution rejects updates queued by a stale curator after authority transfer, direct mutable TLV updates are blocked while the timelock is active, and `PendingExtensionUpdate` is intentionally limited to min subscription, min redemption, pausable subscriptions, and pausable redemptions.
+- 🟢 **Single-tranche performance fee** — `update_vault_nav` mints fee shares to the configured fee recipient when NAV rises above `high_water_mark`. The share-minting formula accounts for dilution by solving against post-mint supply, floors in favor of the pool, and requires SPL Token/Token-2022 share mint + fee-recipient token account as remaining accounts only when a fee is actually due. `performance_fee_crystallization_interval_seconds = 0` preserves immediate crystallization; nonzero values let NAV update while leaving the high-water mark unchanged until the interval elapses.
+- 🟢 **Vault-level protocol fee split** — `protocol_fee_bps` and `protocol_fee_recipient` live on `Vault` and skim from already-computed deposit, withdrawal, primary instant-redemption, and single-tranche performance fees. This deliberately avoids a program-wide governance/config account until the protocol-admin model is specified.
+- 🟢 **Asset approval/async PDA slice** — `VaultAsset` records are keyed by `(vault, asset_mint)` and own per-asset reserve/pending token PDAs. Curators can add secondary approved assets up to `MAX_APPROVED_ASSETS = 8` including the primary asset, remove them only when stored balances and token balances are zero, and route secondary deposits/redemptions through per-asset pending/idle ledger updates.
+- 🟡 **Tranche config, waterfall, and request binding** — `initialize_tranches` creates a `TrancheConfig` PDA keyed by vault before initialization and stores its address on `Vault.tranche_config`, so tranche-enabled NAV updates cannot silently omit waterfall accounting. One tranche mint must be the existing `Vault.share_mint`, and the second zero-supply tranche mint is transferred to vault mint authority. This avoids accidentally creating senior, junior, and unused legacy share mints while preserving the existing vault seed model. `update_vault_nav` applies senior-target gain allocation and junior-first loss allocation. Request lifecycle instructions keep the vault PDA derived from the base `Vault.share_mint` while storing `Request.share_mint_address` and minting/burning the selected base/senior/junior share mint after validating `TrancheConfig`. Request creation enforces configured per-direction tranche min/max amount bounds. Approval enforces `min_junior_ratio_bps` for senior deposits and junior redemptions, and tranche NAV snapshots preserve committed supply so approved-but-unclaimed deposits cannot be undercounted by later approvals.
+- 🟡 **Primary instant settlement** — `InstantSettlement` is a creation-time TLV opt-in that enables one-instruction primary-asset deposits and redeems for non-tranche vaults. The path uses current NAV plus staleness checks, existing deposit/withdrawal fees, `instant_redemption_fee_bps`, optional min/max per-transaction deposit and redeem bounds, optional per-user epoch-window limits through `InstantSettlementUser` when configured, reserve-liquidity checks, and immediate `Vault.total_asset_balance` updates. Secondary assets, tranche-aware settlement, and oracle-priced instant settlement remain future work.
+
+## V2 delegated design decisions
+
+- 🟢 **Rolling-limit accounting** — current Phase 1 uses in-vault epoch windows for the two implemented value-moving paths. Phase 2/3 per-asset manager accounting should move to epoch buckets keyed by `(vault, asset, limit_kind, bucket_start_slot)` once asset and venue state exists.
+- 🟢 **Timelock queue representation** — implemented as one user-supplied pending account per queued mutation: `PendingVaultUpdate` for vault config, `PendingFeeUpdate` for deposit/withdrawal fees, and `PendingExtensionUpdate` for mutable non-fee TLV values. This keeps the first phase simple and mirrors upstream request accounts. Future venue/oracle queues can add typed pending accounts or a hashed payload account if account size becomes a concern.
+- 🟢 **Async secondary lifecycle before full asset lifecycle** — secondary deposits and redemptions now share the upstream async request flow while USD NAV aggregation and secondary manager movement stay disabled until their accounting and liquidity policy are explicit.
+- 🟢 **Free-form external withdrawals are an extension, not a default** — this matches the plan's FR-VENUE-4 safety posture without pretending the CPI boundary is complete. Future venue adapters should use validated registry entries and post-CPI balance checks instead of widening `withdraw_assets`.
+- 🟡 **Venue account-template encoding** — not implemented. Preferred next step is adding fixed-size account role masks and amount bounds to the existing `VenueEntry` records rather than arbitrary bytecode-like policies.
+- 🟡 **Vault-in-vault cycle prevention** — not implemented. Preferred next step is registry-level parent DAG validation with bounded-depth checks at approval time.
+- 🟡 **Tranche NAV storage** — partially implemented in `TrancheConfig` as per-tranche `u128` NAV fields and supply caches updated by `update_vault_nav` and protected approval paths. Request approvals use selected tranche NAV when nonzero and fall back to aggregate vault NAV for zero-supply bootstrap tranches. Per-direction request min/max bounds and lane-local FIFO counters are stored directly on `TrancheConfig`; preferred next step is tranche-aware high-water marks.
+- 🟡 **Oracle adapter trait shape** — not implemented. Preferred next step is explicit adapter instructions per oracle provider; do not dynamically dispatch untrusted oracle programs from the vault.
+- 🟡 **Instant path account model** — implemented for primary-asset, non-tranche vaults by bypassing `Request` accounts and sharing fee/freshness primitives where applicable. Configured per-user rolling limits use an `InstantSettlementUser` PDA keyed by `(vault, user)` and the existing `rolling_limit_window_slots` epoch length; zero-limit paths do not create that PDA. Preferred next step is extending the model only after secondary/tranche liquidity accounting is defined.
+- 🟡 **Protocol fee governance shape** — not implemented. The current slice stores protocol fee configuration per vault and enforces it through the existing vault-config timelock; a future program-wide config should define admin authority, fee caps, recipient rotation, and migration semantics before replacing or overriding the vault-level fields.
 
 ## Build & performance
 
@@ -93,4 +118,4 @@ Mostly integrator-side or composed with other standards.
 
 ## Disclaimer
 
-The content herein is provided for educational, informational, and entertainment purposes only, and does not constitute an offer to sell or a solicitation of an offer to buy any securities, options, futures, or other derivatives related to securities in any jurisdiction, nor should not be relied upon as advice to buy, sell or hold any of the foregoing. This content is intended to be general in nature and is not specific to you, the user or anyone else. You should not make any decision, financial, investment, trading or otherwise, based on any of the information presented without undertaking independent due diligence and consultation with a professional advisor. Solana Foundation Foundation and its agents, advisors, council members, officers and employees (the "Foundation Parties") make no representation or warranties, expressed or implied, as to the accuracy of the information herein and expressly disclaims any and all liability that may be based on such information or any errors or omissions therein. The Foundation Parties shall have no liability whatsoever, under contract, tort, trust or otherwise, to any person arising from or related to the content or any use of the information contained herein by you or any of your representatives. All opinions expressed herein are the speakers' own personal opinions and do not reflect the opinions of any entities.
+The content herein is provided for educational and informational purposes only. It is not an offer to sell or a solicitation of an offer to buy any security or derivative, and it should not be relied on as investment, legal, tax, or financial advice.

@@ -1,0 +1,6024 @@
+{
+  "address": "3Y4rpSYqrW9JRuiS3YosEXSSYHai4sFH3XMzAQmkNzFg",
+  "metadata": {
+    "name": "async_vault_v2",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "accept_authority_invitation",
+      "docs": [
+        "Completes the authority transfer by setting the vault authority to",
+        "the pending authority. Requires both the current and new authority",
+        "to sign."
+      ],
+      "discriminator": [
+        25,
+        46,
+        44,
+        100,
+        108,
+        172,
+        146,
+        180
+      ],
+      "accounts": [
+        {
+          "name": "new_authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "add_vault_asset",
+      "docs": [
+        "Adds an approved asset mint and its reserve/pending token accounts."
+      ],
+      "discriminator": [
+        134,
+        165,
+        102,
+        232,
+        165,
+        12,
+        39,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "vault_asset",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserve",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  112,
+                  101,
+                  110,
+                  100,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "AddVaultAssetArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "approve_request",
+      "docs": [
+        "Approve a pending request, allowing the User to execute the Claim instruction.",
+        "This sets the Request's claimable NAV to the Vault's current NAV."
+      ],
+      "discriminator": [
+        89,
+        68,
+        167,
+        104,
+        93,
+        25,
+        178,
+        205
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "share_mint"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault.share_mint",
+                "account": "Vault"
+              }
+            ]
+          },
+          "relations": [
+            "request"
+          ]
+        },
+        {
+          "name": "vault_asset",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "request",
+          "writable": true
+        },
+        {
+          "name": "vault_token_account",
+          "writable": true
+        },
+        {
+          "name": "pending_vault",
+          "writable": true
+        },
+        {
+          "name": "asset_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "ApproveRequestArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "approve_vault_venue",
+      "docs": [
+        "Approves a registered venue for a specific vault."
+      ],
+      "discriminator": [
+        208,
+        140,
+        91,
+        134,
+        203,
+        188,
+        152,
+        88
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "venue_entry"
+        },
+        {
+          "name": "vault_venue",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_extension_update",
+      "docs": [
+        "Cancels a queued non-fee TLV extension update. Requires current curator."
+      ],
+      "discriminator": [
+        131,
+        200,
+        96,
+        121,
+        132,
+        48,
+        13,
+        10
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pending_extension_update",
+          "writable": true
+        },
+        {
+          "name": "vault"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_fee_update",
+      "docs": [
+        "Cancels a queued fee update. Requires current curator."
+      ],
+      "discriminator": [
+        43,
+        137,
+        224,
+        146,
+        143,
+        151,
+        159,
+        201
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pending_fee_update",
+          "writable": true
+        },
+        {
+          "name": "vault"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_queued_deposit_request",
+      "docs": [
+        "Cancels a pending queued deposit request. Assets are refunded immediately. The request",
+        "account remains open as a tombstone so the subscription queue can advance past it via",
+        "`skip_canceled_queue_request`. Only valid for vaults with SubscriptionQueue active."
+      ],
+      "discriminator": [
+        163,
+        192,
+        210,
+        165,
+        116,
+        122,
+        10,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "share_mint"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault.share_mint",
+                "account": "Vault"
+              }
+            ]
+          },
+          "relations": [
+            "request"
+          ]
+        },
+        {
+          "name": "vault_asset",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "request",
+          "writable": true
+        },
+        {
+          "name": "user_token_account",
+          "writable": true
+        },
+        {
+          "name": "asset_pending_vault",
+          "writable": true
+        },
+        {
+          "name": "asset_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_queued_redemption_request",
+      "docs": [
+        "Cancels a pending queued redeem request. Shares are minted back to the user immediately.",
+        "The request account remains open as a tombstone so the redemption queue can advance past",
+        "it via `skip_canceled_queue_request`. Only valid for vaults with RedemptionQueue",
+        "active."
+      ],
+      "discriminator": [
+        133,
+        45,
+        244,
+        133,
+        86,
+        35,
+        66,
+        14
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "asset_mint",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "share_mint",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault.share_mint",
+                "account": "Vault"
+              }
+            ]
+          },
+          "relations": [
+            "request"
+          ]
+        },
+        {
+          "name": "request",
+          "writable": true
+        },
+        {
+          "name": "user_share_account",
+          "writable": true
+        },
+        {
+          "name": "share_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_request",
+      "docs": [
+        "Cancels a pending request. For deposits, refunds the full amount",
+        "back to the user. For redemptions, mints the shares back."
+      ],
+      "discriminator": [
+        65,
+        196,
+        177,
+        247,
+        83,
+        151,
+        33,
+        130
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "share_mint",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault.share_mint",
+                "account": "Vault"
+              }
+            ]
+          },
+          "relations": [
+            "request"
+          ]
+        },
+        {
+          "name": "vault_asset",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "request",
+          "writable": true
+        },
+        {
+          "name": "user_token_account",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "asset_pending_vault",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "user_share_account",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "share_token_program",
+          "optional": true
+        },
+        {
+          "name": "asset_token_program",
+          "optional": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_vault_update",
+      "docs": [
+        "Cancels a queued vault configuration update. Requires current curator."
+      ],
+      "discriminator": [
+        219,
+        112,
+        50,
+        81,
+        106,
+        253,
+        27,
+        207
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pending_update",
+          "writable": true
+        },
+        {
+          "name": "vault"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "claim",
+      "docs": [
+        "User claims their shares or assets from an approved Deposit or Redemption request.",
+        "Request must be Claimable."
+      ],
+      "discriminator": [
+        62,
+        198,
+        214,
+        193,
+        213,
+        159,
+        108,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner",
+          "docs": [
+            "Necessary to send Request owner rent if Operator is claiming."
+          ],
+          "writable": true,
+          "relations": [
+            "request"
+          ]
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "share_mint",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault.share_mint",
+                "account": "Vault"
+              }
+            ]
+          },
+          "relations": [
+            "request"
+          ]
+        },
+        {
+          "name": "vault_asset",
+          "optional": true
+        },
+        {
+          "name": "request",
+          "writable": true
+        },
+        {
+          "name": "pending_vault",
+          "docs": [
+            "Pending deposit vault — source for Redeem claims"
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "user_share_account",
+          "docs": [
+            "User's share TokenAccount — receives minted shares on Deposit (must be owned by",
+            "request.owner)"
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "user_asset_account",
+          "docs": [
+            "User's asset TokenAccount — receives transferred assets on Redeem (must be owned by",
+            "request.owner)"
+          ],
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "asset_token_program"
+        },
+        {
+          "name": "share_token_program",
+          "docs": [
+            "Token program for share mint operations — only required for Deposit"
+          ],
+          "optional": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_deposit_request",
+      "docs": [
+        "Creates a deposit request with state pending (Pending vault authority acceptance)"
+      ],
+      "discriminator": [
+        143,
+        189,
+        167,
+        78,
+        192,
+        226,
+        23,
+        170
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "share_mint"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault.share_mint",
+                "account": "Vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_asset",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "request",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user_token_account",
+          "writable": true
+        },
+        {
+          "name": "pending_vault",
+          "writable": true
+        },
+        {
+          "name": "asset_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "RequestArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_redeem_request",
+      "docs": [
+        "Creates a redeem request with state pending (Pending vault authority acceptance)"
+      ],
+      "discriminator": [
+        196,
+        206,
+        84,
+        221,
+        20,
+        219,
+        235,
+        124
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "share_mint",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault.share_mint",
+                "account": "Vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_asset",
+          "optional": true
+        },
+        {
+          "name": "request",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user_share_account",
+          "writable": true
+        },
+        {
+          "name": "share_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "RequestArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_vault",
+      "docs": [
+        "Creates a new async vault with reserve and pending token accounts,",
+        "transfers share mint authority to the vault PDA, and initializes",
+        "the vault config in a paused + uninitialized state."
+      ],
+      "discriminator": [
+        29,
+        237,
+        247,
+        208,
+        193,
+        82,
+        54,
+        135
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint_authority",
+          "signer": true
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "share_mint",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "share_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserve",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "share_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  110,
+                  100,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "share_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_token_program"
+        },
+        {
+          "name": "share_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "AsyncVaultArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_venue_position",
+      "docs": [
+        "Creates a primary-asset position token account for an approved venue."
+      ],
+      "discriminator": [
+        111,
+        242,
+        227,
+        173,
+        18,
+        121,
+        221,
+        100
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "vault_asset",
+          "optional": true
+        },
+        {
+          "name": "venue_entry"
+        },
+        {
+          "name": "vault_venue",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "deploy_venue_position",
+      "docs": [
+        "Deploys primary assets from the vault reserve into a vault-owned venue position."
+      ],
+      "discriminator": [
+        124,
+        95,
+        255,
+        77,
+        22,
+        109,
+        188,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "vault_asset",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "venue_entry"
+        },
+        {
+          "name": "vault_venue",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_token_account",
+          "writable": true
+        },
+        {
+          "name": "position_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "execute_extension_update",
+      "docs": [
+        "Executes a queued non-fee TLV extension update after its eta slot."
+      ],
+      "discriminator": [
+        132,
+        215,
+        103,
+        155,
+        53,
+        162,
+        18,
+        228
+      ],
+      "accounts": [
+        {
+          "name": "executor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pending_extension_update",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "execute_fee_update",
+      "docs": [
+        "Executes a queued fee update after its eta slot."
+      ],
+      "discriminator": [
+        93,
+        82,
+        190,
+        36,
+        240,
+        21,
+        109,
+        193
+      ],
+      "accounts": [
+        {
+          "name": "executor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pending_fee_update",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "execute_vault_update",
+      "docs": [
+        "Executes a queued vault configuration update after its eta slot."
+      ],
+      "discriminator": [
+        194,
+        218,
+        116,
+        87,
+        116,
+        221,
+        149,
+        84
+      ],
+      "accounts": [
+        {
+          "name": "executor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pending_update",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_deposit_fee",
+      "docs": [
+        "Adds a deposit fee TLV extension to the vault. Must be called",
+        "before vault initialization. Requires authority signature."
+      ],
+      "discriminator": [
+        116,
+        58,
+        55,
+        94,
+        169,
+        138,
+        186,
+        156
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitDepositFeeArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_externally_managed_withdrawals",
+      "docs": [
+        "Enables free-form externally managed withdrawals for this vault.",
+        "Must be initialized before the vault is finalized."
+      ],
+      "discriminator": [
+        155,
+        204,
+        110,
+        224,
+        121,
+        112,
+        52,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_instant_settlement",
+      "docs": [
+        "Enables primary-asset instant deposit/redeem for this vault.",
+        "Must be initialized before the vault is finalized."
+      ],
+      "discriminator": [
+        16,
+        27,
+        97,
+        249,
+        40,
+        227,
+        27,
+        53
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitializeInstantSettlementArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_min_redemption",
+      "docs": [
+        "Adds MinRedemption extension to the vault. Must be called before vault",
+        "initialization. When active, redemption requests below the threshold are rejected.",
+        "Requires authority signature."
+      ],
+      "discriminator": [
+        236,
+        96,
+        157,
+        147,
+        172,
+        194,
+        162,
+        206
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitMinRedemptionArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_min_subscription",
+      "docs": [
+        "Adds MinSubscription extension to the vault. Must be called before vault",
+        "initialization. When active, deposit requests below the threshold are rejected.",
+        "Requires authority signature."
+      ],
+      "discriminator": [
+        12,
+        252,
+        75,
+        176,
+        141,
+        200,
+        135,
+        22
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitMinSubscriptionArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_pausable_redemptions",
+      "docs": [
+        "Adds a PausableRedemptions TLV extension to the vault. Must be called",
+        "before vault initialization. Requires authority signature."
+      ],
+      "discriminator": [
+        212,
+        194,
+        103,
+        78,
+        62,
+        101,
+        125,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitPausableRedemptionsArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_pausable_subscriptions",
+      "docs": [
+        "Adds a PausableSubscriptions TLV extension to the vault. Must be called",
+        "before vault initialization. Requires authority signature."
+      ],
+      "discriminator": [
+        54,
+        69,
+        88,
+        16,
+        146,
+        253,
+        73,
+        189
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitPausableSubscriptionsArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_redemption_queue",
+      "docs": [
+        "Adds a RedemptionQueue TLV extension to the vault, enabling FIFO ordering",
+        "for redeem requests. Must be called before vault initialization. Requires authority",
+        "signature."
+      ],
+      "discriminator": [
+        171,
+        201,
+        79,
+        69,
+        69,
+        151,
+        7,
+        131
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_subscription_queue",
+      "docs": [
+        "Adds a SubscriptionQueue TLV extension to the vault, enabling FIFO ordering",
+        "for deposit requests. Must be called before vault initialization. Requires authority",
+        "signature."
+      ],
+      "discriminator": [
+        225,
+        59,
+        88,
+        205,
+        208,
+        236,
+        97,
+        112
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_tranches",
+      "docs": [
+        "Enables optional tranche mode by recording senior/junior share mints",
+        "before vault initialization. Waterfall and tranche-scoped request paths",
+        "are added by later Phase 4 slices."
+      ],
+      "discriminator": [
+        225,
+        201,
+        251,
+        81,
+        153,
+        138,
+        122,
+        206
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint_authority",
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "senior_share_mint",
+          "writable": true
+        },
+        {
+          "name": "junior_share_mint",
+          "writable": true
+        },
+        {
+          "name": "tranche_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  114,
+                  97,
+                  110,
+                  99,
+                  104,
+                  101,
+                  115
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "senior_share_token_program"
+        },
+        {
+          "name": "junior_share_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitializeTranchesArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_vault",
+      "docs": [
+        "Finalizes vault setup by marking it as initialized. Once initialized,",
+        "no new extensions can be added. Requires authority signature."
+      ],
+      "discriminator": [
+        48,
+        191,
+        163,
+        44,
+        71,
+        129,
+        63,
+        164
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "share_mint",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize_withdrawal_fee",
+      "docs": [
+        "Adds a withdrawal fee TLV extension to the vault. Must be called",
+        "before vault initialization. Requires authority signature."
+      ],
+      "discriminator": [
+        113,
+        34,
+        243,
+        38,
+        112,
+        66,
+        255,
+        231
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitWithdrawalFeeArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "instant_deposit",
+      "docs": [
+        "Instantly deposits primary assets and mints shares when the opt-in extension is enabled."
+      ],
+      "discriminator": [
+        198,
+        51,
+        102,
+        183,
+        111,
+        152,
+        225,
+        115
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "asset_mint",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "share_mint",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "share_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "instant_user",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  115,
+                  116,
+                  97,
+                  110,
+                  116,
+                  95,
+                  117,
+                  115,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_token_account",
+          "writable": true
+        },
+        {
+          "name": "user_asset_account",
+          "writable": true
+        },
+        {
+          "name": "user_share_account",
+          "writable": true
+        },
+        {
+          "name": "fee_recipient_token_account",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "protocol_fee_recipient_token_account",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "asset_token_program"
+        },
+        {
+          "name": "share_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "instant_redeem",
+      "docs": [
+        "Instantly burns shares and redeems primary assets when the opt-in extension is enabled."
+      ],
+      "discriminator": [
+        187,
+        107,
+        208,
+        125,
+        224,
+        237,
+        40,
+        93
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "asset_mint",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "share_mint",
+          "writable": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "share_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "instant_user",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  115,
+                  116,
+                  97,
+                  110,
+                  116,
+                  95,
+                  117,
+                  115,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_token_account",
+          "writable": true
+        },
+        {
+          "name": "user_share_account",
+          "writable": true
+        },
+        {
+          "name": "user_asset_account",
+          "writable": true
+        },
+        {
+          "name": "fee_recipient_token_account",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "protocol_fee_recipient_token_account",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "asset_token_program"
+        },
+        {
+          "name": "share_token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "shares",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "invite_new_authority",
+      "docs": [
+        "Stores a pending authority on the vault without transferring control.",
+        "The new authority must later call `accept_authority_invitation` to",
+        "complete the transfer. Requires current authority signature."
+      ],
+      "discriminator": [
+        133,
+        118,
+        213,
+        2,
+        38,
+        53,
+        126,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InviteNewAuthorityArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "pause_vault",
+      "docs": [
+        "Pauses the vault using the breaker role. Breaker cannot unpause."
+      ],
+      "discriminator": [
+        250,
+        6,
+        228,
+        57,
+        6,
+        104,
+        19,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "breaker",
+          "signer": true
+        },
+        {
+          "name": "share_mint"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "share_mint"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "pull_venue_position",
+      "docs": [
+        "Pulls primary assets from a vault-owned venue position back to the vault reserve."
+      ],
+      "discriminator": [
+        113,
+        93,
+        116,
+        154,
+        132,
+        204,
+        158,
+        152
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "vault_asset",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "venue_entry"
+        },
+        {
+          "name": "vault_venue",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_token_account",
+          "writable": true
+        },
+        {
+          "name": "position_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "queue_extension_update",
+      "docs": [
+        "Queues a timelocked mutable non-fee TLV extension update."
+      ],
+      "discriminator": [
+        95,
+        255,
+        53,
+        212,
+        82,
+        43,
+        238,
+        82
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault"
+        },
+        {
+          "name": "pending_extension_update",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "ExtensionUpdateArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "queue_fee_update",
+      "docs": [
+        "Queues a timelocked deposit/withdrawal fee update."
+      ],
+      "discriminator": [
+        136,
+        10,
+        1,
+        170,
+        154,
+        25,
+        183,
+        132
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault"
+        },
+        {
+          "name": "pending_fee_update",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "FeeUpdateArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "queue_vault_update",
+      "docs": [
+        "Queues a timelocked vault configuration update."
+      ],
+      "discriminator": [
+        230,
+        181,
+        62,
+        141,
+        118,
+        25,
+        9,
+        48
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "share_mint"
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "share_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_update",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "UpdateVaultArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "register_venue",
+      "docs": [
+        "Registers a venue entry under a registry-authority namespace."
+      ],
+      "discriminator": [
+        116,
+        155,
+        199,
+        243,
+        228,
+        180,
+        176,
+        173
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "registry_authority",
+          "signer": true
+        },
+        {
+          "name": "venue_entry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "registry_authority"
+              },
+              {
+                "kind": "arg",
+                "path": "args.venue_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "RegisterVenueArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "reject_request",
+      "docs": [
+        "Reject a pending request. For deposit requests, the deposited assets are",
+        "refunded to the user. For redeem requests, the shares are minted back to the user.",
+        "The request account is closed and its rent is returned to the user."
+      ],
+      "discriminator": [
+        11,
+        232,
+        75,
+        149,
+        197,
+        137,
+        152,
+        208
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "share_mint",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault.share_mint",
+                "account": "Vault"
+              }
+            ]
+          },
+          "relations": [
+            "request"
+          ]
+        },
+        {
+          "name": "vault_asset",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "request",
+          "writable": true
+        },
+        {
+          "name": "user",
+          "writable": true
+        },
+        {
+          "name": "user_token_account",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "asset_pending_vault",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "user_share_account",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "share_token_program",
+          "optional": true
+        },
+        {
+          "name": "asset_token_program",
+          "optional": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "RejectRequestArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "remove_vault_asset",
+      "docs": [
+        "Removes an approved asset after all balances for that asset are zero."
+      ],
+      "discriminator": [
+        156,
+        169,
+        108,
+        1,
+        151,
+        3,
+        65,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "vault_asset",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserve",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  115,
+                  115,
+                  101,
+                  116,
+                  95,
+                  112,
+                  101,
+                  110,
+                  100,
+                  105,
+                  110,
+                  103
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "remove_vault_venue",
+      "docs": [
+        "Removes a zero-position venue approval from a vault."
+      ],
+      "discriminator": [
+        148,
+        145,
+        216,
+        208,
+        142,
+        229,
+        0,
+        246
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault"
+        },
+        {
+          "name": "venue_entry"
+        },
+        {
+          "name": "vault_venue",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "remove_venue_position",
+      "docs": [
+        "Removes a zero-balance primary-asset venue position."
+      ],
+      "discriminator": [
+        179,
+        198,
+        24,
+        254,
+        126,
+        161,
+        83,
+        83
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "vault"
+        },
+        {
+          "name": "vault_asset",
+          "optional": true
+        },
+        {
+          "name": "venue_entry"
+        },
+        {
+          "name": "vault_venue",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_operator",
+      "docs": [
+        "Sets an operator for the Request.",
+        "Requires Request owner signature."
+      ],
+      "discriminator": [
+        238,
+        153,
+        101,
+        169,
+        243,
+        131,
+        36,
+        1
+      ],
+      "accounts": [
+        {
+          "name": "user",
+          "signer": true
+        },
+        {
+          "name": "operator",
+          "signer": true
+        },
+        {
+          "name": "request",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_venue_entry_paused",
+      "docs": [
+        "Pauses or unpauses a venue entry. Requires the registry authority."
+      ],
+      "discriminator": [
+        67,
+        213,
+        240,
+        139,
+        105,
+        118,
+        226,
+        145
+      ],
+      "accounts": [
+        {
+          "name": "registry_authority",
+          "signer": true
+        },
+        {
+          "name": "venue_entry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry.registry_authority",
+                "account": "VenueEntry"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry.venue_id",
+                "account": "VenueEntry"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "SetVenueEntryPausedArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "skip_canceled_queue_request",
+      "docs": [
+        "Permissionless instruction that advances the queue past a canceled request, closes the",
+        "request account, and returns rent to the original owner. Works for both subscription and",
+        "redemption queues; queue type is inferred from the request's type. Must be called in",
+        "ascending request ID order for consecutive tombstones."
+      ],
+      "discriminator": [
+        57,
+        98,
+        74,
+        205,
+        33,
+        46,
+        89,
+        166
+      ],
+      "accounts": [
+        {
+          "name": "vault",
+          "writable": true,
+          "relations": [
+            "request"
+          ]
+        },
+        {
+          "name": "request",
+          "writable": true
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "relations": [
+            "request"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "update_deposit_fee",
+      "docs": [
+        "Updates an existing deposit fee extension. The fee must have been",
+        "previously initialized. Requires authority signature."
+      ],
+      "discriminator": [
+        60,
+        169,
+        133,
+        28,
+        78,
+        234,
+        0,
+        31
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "UpdateDepositFeeArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_min_redemption",
+      "docs": [
+        "Updates the threshold of an existing MinRedemption extension.",
+        "Requires authority signature."
+      ],
+      "discriminator": [
+        248,
+        149,
+        70,
+        79,
+        2,
+        251,
+        188,
+        92
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "UpdateMinRedemptionArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_min_subscription",
+      "docs": [
+        "Updates the threshold of an existing MinSubscription extension.",
+        "Requires authority signature."
+      ],
+      "discriminator": [
+        63,
+        126,
+        170,
+        249,
+        163,
+        30,
+        203,
+        167
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "UpdateMinSubscriptionArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_pausable_redemptions",
+      "docs": [
+        "Updates the paused state of an existing PausableRedemptions extension.",
+        "When paused is true, new redeem requests are rejected. Requires authority signature."
+      ],
+      "discriminator": [
+        42,
+        12,
+        92,
+        189,
+        83,
+        1,
+        231,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "UpdatePausableRedemptionsArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_pausable_subscriptions",
+      "docs": [
+        "Updates the paused state of an existing PausableSubscriptions extension.",
+        "When paused is true, new deposit requests are rejected. Requires authority signature."
+      ],
+      "discriminator": [
+        93,
+        189,
+        220,
+        109,
+        32,
+        92,
+        97,
+        37
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "UpdatePausableSubscriptionsArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_vault",
+      "docs": [
+        "Updates the async vault configuration. Can modify paused status",
+        "and the fee_recipient. Requires authority signature."
+      ],
+      "discriminator": [
+        67,
+        229,
+        185,
+        188,
+        226,
+        11,
+        210,
+        60
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "share_mint"
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "share_mint"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "UpdateVaultArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_vault_nav",
+      "docs": [
+        "Updates the vault nav and increases nav version by 1",
+        "Requires authority signature."
+      ],
+      "discriminator": [
+        252,
+        12,
+        154,
+        223,
+        213,
+        206,
+        35,
+        233
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "updated_nav",
+          "type": "u128"
+        }
+      ]
+    },
+    {
+      "name": "update_withdrawal_fee",
+      "docs": [
+        "Updates an existing withdrawal fee extension. The fee must have been",
+        "previously initialized. Requires authority signature."
+      ],
+      "discriminator": [
+        165,
+        235,
+        231,
+        25,
+        127,
+        99,
+        244,
+        133
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "UpdateWithdrawalFeeArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "withdraw_assets",
+      "docs": [
+        "Withdraws assets from the vault reserve to a specified token account.",
+        "Used for async operations such as deploying assets offchain.",
+        "Requires authority signature."
+      ],
+      "discriminator": [
+        202,
+        105,
+        54,
+        155,
+        56,
+        33,
+        207,
+        254
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "asset_mint",
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true
+        },
+        {
+          "name": "venue_entry"
+        },
+        {
+          "name": "vault_venue",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_token_account",
+          "writable": true
+        },
+        {
+          "name": "recipient_token_account",
+          "writable": true
+        },
+        {
+          "name": "asset_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "PendingExtensionUpdate",
+      "discriminator": [
+        89,
+        135,
+        89,
+        177,
+        98,
+        71,
+        59,
+        53
+      ]
+    },
+    {
+      "name": "PendingFeeUpdate",
+      "discriminator": [
+        54,
+        15,
+        99,
+        37,
+        82,
+        28,
+        38,
+        140
+      ]
+    },
+    {
+      "name": "PendingVaultUpdate",
+      "discriminator": [
+        50,
+        94,
+        1,
+        192,
+        224,
+        64,
+        26,
+        203
+      ]
+    },
+    {
+      "name": "Position",
+      "discriminator": [
+        170,
+        188,
+        143,
+        228,
+        122,
+        64,
+        247,
+        208
+      ]
+    },
+    {
+      "name": "Request",
+      "discriminator": [
+        125,
+        172,
+        150,
+        161,
+        162,
+        115,
+        39,
+        71
+      ]
+    },
+    {
+      "name": "TrancheConfig",
+      "discriminator": [
+        132,
+        228,
+        43,
+        251,
+        224,
+        23,
+        48,
+        65
+      ]
+    },
+    {
+      "name": "Vault",
+      "discriminator": [
+        211,
+        8,
+        232,
+        43,
+        2,
+        152,
+        117,
+        119
+      ]
+    },
+    {
+      "name": "VaultAsset",
+      "discriminator": [
+        38,
+        213,
+        6,
+        33,
+        94,
+        119,
+        104,
+        181
+      ]
+    },
+    {
+      "name": "VaultVenue",
+      "discriminator": [
+        0,
+        224,
+        141,
+        6,
+        55,
+        171,
+        66,
+        18
+      ]
+    },
+    {
+      "name": "VenueEntry",
+      "discriminator": [
+        216,
+        129,
+        22,
+        93,
+        38,
+        211,
+        109,
+        50
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidInitialPrice",
+      "msg": "Initial price cannot be zero"
+    },
+    {
+      "code": 6001,
+      "name": "UnauthorizedSigner",
+      "msg": "Unauthorized signer"
+    },
+    {
+      "code": 6002,
+      "name": "UninitializedVault",
+      "msg": "Vault is not initialized"
+    },
+    {
+      "code": 6003,
+      "name": "PausedVault",
+      "msg": "Vault is paused"
+    },
+    {
+      "code": 6004,
+      "name": "VaultAlreadyInitialized",
+      "msg": "Vault is already initialized"
+    },
+    {
+      "code": 6005,
+      "name": "ExtensionAlreadyInitialized",
+      "msg": "Extension is already initialized"
+    },
+    {
+      "code": 6006,
+      "name": "UninitializedExtension",
+      "msg": "Extension is not initialized"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidExtensionData",
+      "msg": "Invalid extension data"
+    },
+    {
+      "code": 6008,
+      "name": "FeeBpsExceeded",
+      "msg": "Fee basis points exceed maximum"
+    },
+    {
+      "code": 6009,
+      "name": "ArithmeticError",
+      "msg": "Arithmetic error"
+    },
+    {
+      "code": 6010,
+      "name": "MintsShouldBeDifferent",
+      "msg": "Mints should be different."
+    },
+    {
+      "code": 6011,
+      "name": "ShareMintSupplyShouldBeZero",
+      "msg": "Share mint supply should be zero."
+    },
+    {
+      "code": 6012,
+      "name": "NoPendingAuthority",
+      "msg": "No pending authority invitation"
+    },
+    {
+      "code": 6013,
+      "name": "InvalidPendingVault",
+      "msg": "Pending Vault is not valid."
+    },
+    {
+      "code": 6014,
+      "name": "InvalidPendingSharesVault",
+      "msg": "Pending Shares Vault is not valid."
+    },
+    {
+      "code": 6015,
+      "name": "MissingFeeRecipient",
+      "msg": "Fee recipient account must be provided as a remaining account when fee > 0."
+    },
+    {
+      "code": 6016,
+      "name": "InvalidFeeRecipient",
+      "msg": "Fee recipient account is invalid."
+    },
+    {
+      "code": 6017,
+      "name": "RequestInvalidState",
+      "msg": "Request current state is not valid."
+    },
+    {
+      "code": 6018,
+      "name": "RequestIsNotPending",
+      "msg": "Request is not pending."
+    },
+    {
+      "code": 6019,
+      "name": "InvalidRequestType",
+      "msg": "Invalid request type for this instruction."
+    },
+    {
+      "code": 6020,
+      "name": "MissingRequiredAccount",
+      "msg": "A required optional account was not provided."
+    },
+    {
+      "code": 6021,
+      "name": "InvalidAssetMintExtensions",
+      "msg": "Asset mint has invalid extensions."
+    },
+    {
+      "code": 6022,
+      "name": "InvalidAssetMint",
+      "msg": "Asset mint is not valid."
+    },
+    {
+      "code": 6023,
+      "name": "InvalidShareMint",
+      "msg": "Share mint is not valid."
+    },
+    {
+      "code": 6024,
+      "name": "InvalidRequest",
+      "msg": "Request address is not valid."
+    },
+    {
+      "code": 6025,
+      "name": "RequestNotPending",
+      "msg": "Request is not in a Pending state."
+    },
+    {
+      "code": 6026,
+      "name": "RequestNotClaimable",
+      "msg": "Request is not in a Claimable state."
+    },
+    {
+      "code": 6027,
+      "name": "SubscriptionsPaused",
+      "msg": "Subscriptions are paused"
+    },
+    {
+      "code": 6028,
+      "name": "RedemptionsPaused",
+      "msg": "Redemptions are paused"
+    },
+    {
+      "code": 6029,
+      "name": "SubscriptionQueueOutOfOrder",
+      "msg": "Deposit request is not next in the subscription queue"
+    },
+    {
+      "code": 6030,
+      "name": "RequestIsNotCanceled",
+      "msg": "Request is not in a Canceled state."
+    },
+    {
+      "code": 6031,
+      "name": "MustUseCancelQueuedDepositRequest",
+      "msg": "Queued deposit requests must be canceled via cancel_queued_deposit_request."
+    },
+    {
+      "code": 6032,
+      "name": "RedemptionQueueOutOfOrder",
+      "msg": "Redeem request is not next in the redemption queue"
+    },
+    {
+      "code": 6033,
+      "name": "MustUseCancelQueuedRedemptionRequest",
+      "msg": "Queued redeem requests must be canceled via cancel_queued_redemption_request."
+    },
+    {
+      "code": 6034,
+      "name": "SubscriptionAmountBelowMinimum",
+      "msg": "Deposit amount is below the minimum subscription threshold"
+    },
+    {
+      "code": 6035,
+      "name": "RedemptionAmountBelowMinimum",
+      "msg": "Redemption amount is below the minimum redemption threshold"
+    },
+    {
+      "code": 6036,
+      "name": "NavIsNotSet",
+      "msg": "Nav is not set."
+    },
+    {
+      "code": 6037,
+      "name": "InsufficientRedeemAmount",
+      "msg": "Redeem shares amount too small."
+    },
+    {
+      "code": 6038,
+      "name": "ApprovalRequestMismatch",
+      "msg": "Approval does not match the live request instance."
+    },
+    {
+      "code": 6039,
+      "name": "InsufficientDepositAmount",
+      "msg": "Deposit amount too small."
+    },
+    {
+      "code": 6040,
+      "name": "InvalidShareMintExtensions",
+      "msg": "Share mint has invalid extensions."
+    },
+    {
+      "code": 6041,
+      "name": "StaleNav",
+      "msg": "NAV is stale for this instruction."
+    },
+    {
+      "code": 6042,
+      "name": "NavDeltaExceeded",
+      "msg": "NAV delta exceeds configured bounds."
+    },
+    {
+      "code": 6043,
+      "name": "NavApyExceeded",
+      "msg": "Implied APY exceeds configured bounds."
+    },
+    {
+      "code": 6044,
+      "name": "DepositCapExceeded",
+      "msg": "Deposit cap exceeded."
+    },
+    {
+      "code": 6045,
+      "name": "BreakerCanOnlyPause",
+      "msg": "Breaker can only pause the vault."
+    },
+    {
+      "code": 6046,
+      "name": "UnsupportedPhaseConfig",
+      "msg": "Configuration is reserved for a later V2 phase and is not enforced yet."
+    },
+    {
+      "code": 6047,
+      "name": "RollingLimitExceeded",
+      "msg": "Rolling limit exceeded."
+    },
+    {
+      "code": 6048,
+      "name": "InvalidRollingLimitConfig",
+      "msg": "Invalid rolling limit configuration."
+    },
+    {
+      "code": 6049,
+      "name": "TimelockRequired",
+      "msg": "A timelock queue is required for this configuration change."
+    },
+    {
+      "code": 6050,
+      "name": "TimelockNotConfigured",
+      "msg": "Vault timelock is not configured."
+    },
+    {
+      "code": 6051,
+      "name": "TimelockNotReady",
+      "msg": "Timelock has not reached its eta slot."
+    },
+    {
+      "code": 6052,
+      "name": "InvalidTimelockChange",
+      "msg": "Invalid timelock change."
+    },
+    {
+      "code": 6053,
+      "name": "StaleTimelockAuthority",
+      "msg": "Queued timelock authority no longer matches the vault curator."
+    },
+    {
+      "code": 6054,
+      "name": "AssetAlreadyApproved",
+      "msg": "Asset is already approved for this vault."
+    },
+    {
+      "code": 6055,
+      "name": "MaxApprovedAssetsExceeded",
+      "msg": "Maximum approved asset count exceeded."
+    },
+    {
+      "code": 6056,
+      "name": "AssetBalanceNonZero",
+      "msg": "Asset balances must be zero before removal."
+    },
+    {
+      "code": 6057,
+      "name": "InvalidVault",
+      "msg": "Invalid vault account."
+    },
+    {
+      "code": 6058,
+      "name": "ExternallyManagedWithdrawalsDisabled",
+      "msg": "Externally managed withdrawals are not enabled for this vault."
+    },
+    {
+      "code": 6059,
+      "name": "InvalidVenueDiscriminatorCount",
+      "msg": "Venue discriminator count is invalid."
+    },
+    {
+      "code": 6060,
+      "name": "VenuePaused",
+      "msg": "Venue entry is paused."
+    },
+    {
+      "code": 6061,
+      "name": "VenuePositionNonZero",
+      "msg": "Venue positions must be zero before removal."
+    },
+    {
+      "code": 6062,
+      "name": "InvalidVenueEntry",
+      "msg": "Invalid venue entry."
+    },
+    {
+      "code": 6063,
+      "name": "InvalidPosition",
+      "msg": "Invalid position account."
+    },
+    {
+      "code": 6064,
+      "name": "PositionBalanceNonZero",
+      "msg": "Position balances must be zero before removal."
+    },
+    {
+      "code": 6065,
+      "name": "InsufficientPositionBalance",
+      "msg": "Position balance is insufficient."
+    },
+    {
+      "code": 6066,
+      "name": "InvalidBalanceDelta",
+      "msg": "Post-transfer token balance delta did not match the requested amount."
+    },
+    {
+      "code": 6067,
+      "name": "InstantSettlementDisabled",
+      "msg": "Instant settlement is not enabled for this vault."
+    },
+    {
+      "code": 6068,
+      "name": "InsufficientLiquidity",
+      "msg": "Vault reserve liquidity is insufficient for this redemption."
+    },
+    {
+      "code": 6069,
+      "name": "JuniorRatioBelowMinimum",
+      "msg": "Junior tranche ratio would fall below the configured minimum."
+    },
+    {
+      "code": 6070,
+      "name": "InvalidTrancheRequestLimitConfig",
+      "msg": "Invalid tranche request limit configuration."
+    },
+    {
+      "code": 6071,
+      "name": "TrancheRequestAmountBelowMinimum",
+      "msg": "Tranche request amount is below the configured minimum."
+    },
+    {
+      "code": 6072,
+      "name": "TrancheRequestAmountAboveMaximum",
+      "msg": "Tranche request amount is above the configured maximum."
+    },
+    {
+      "code": 6073,
+      "name": "InvalidInstantSettlementThresholdConfig",
+      "msg": "Invalid instant settlement threshold configuration."
+    },
+    {
+      "code": 6074,
+      "name": "InstantDepositAmountBelowMinimum",
+      "msg": "Instant deposit amount is below the configured minimum."
+    },
+    {
+      "code": 6075,
+      "name": "InstantDepositAmountAboveMaximum",
+      "msg": "Instant deposit amount is above the configured maximum."
+    },
+    {
+      "code": 6076,
+      "name": "InstantRedeemSharesBelowMinimum",
+      "msg": "Instant redeem shares are below the configured minimum."
+    },
+    {
+      "code": 6077,
+      "name": "InstantRedeemSharesAboveMaximum",
+      "msg": "Instant redeem shares are above the configured maximum."
+    }
+  ],
+  "types": [
+    {
+      "name": "AddVaultAssetArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "deposit_cap",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ApproveRequestArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "request_type",
+            "type": {
+              "defined": {
+                "name": "RequestType"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "nav_update_version",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AsyncVaultArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_recipient",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExtensionUpdateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "ExtensionUpdateKind"
+              }
+            }
+          },
+          {
+            "name": "threshold",
+            "type": "u64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ExtensionUpdateKind",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "MinSubscription"
+          },
+          {
+            "name": "MinRedemption"
+          },
+          {
+            "name": "PausableSubscriptions"
+          },
+          {
+            "name": "PausableRedemptions"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FeeType",
+      "docs": [
+        "The fee types:",
+        "FixedAmount: a fixed fee is applied (ex 0.1 asset)",
+        "Percentage: the fee is a % of the transfer amount"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "FixedAmount",
+            "fields": [
+              {
+                "name": "amount",
+                "type": "u64"
+              }
+            ]
+          },
+          {
+            "name": "Percentage",
+            "fields": [
+              {
+                "name": "bps",
+                "type": "u16"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "FeeUpdateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "kind",
+            "type": {
+              "defined": {
+                "name": "FeeUpdateKind"
+              }
+            }
+          },
+          {
+            "name": "fee",
+            "type": {
+              "defined": {
+                "name": "FeeType"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "FeeUpdateKind",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Deposit"
+          },
+          {
+            "name": "Withdrawal"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitDepositFeeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "deposit_fee",
+            "type": {
+              "defined": {
+                "name": "FeeType"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitMinRedemptionArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "threshold",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitMinSubscriptionArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "threshold",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitPausableRedemptionsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitPausableSubscriptionsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitWithdrawalFeeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "withdrawal_fee",
+            "type": {
+              "defined": {
+                "name": "FeeType"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeInstantSettlementArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "instant_redemption_fee_bps",
+            "type": "u16"
+          },
+          {
+            "name": "min_deposit_amount",
+            "type": "u64"
+          },
+          {
+            "name": "max_deposit_amount",
+            "type": "u64"
+          },
+          {
+            "name": "min_redeem_shares",
+            "type": "u64"
+          },
+          {
+            "name": "max_redeem_shares",
+            "type": "u64"
+          },
+          {
+            "name": "max_user_deposit_amount",
+            "type": "u64"
+          },
+          {
+            "name": "max_user_redeem_shares",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeTranchesArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "senior_target_bps",
+            "type": "u16"
+          },
+          {
+            "name": "min_junior_ratio_bps",
+            "type": "u16"
+          },
+          {
+            "name": "min_request_amounts",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "max_request_amounts",
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "InviteNewAuthorityArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NavMode",
+      "docs": [
+        "NAV validation mode configured for a vault."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "AuthoritySigned"
+          },
+          {
+            "name": "Oracle"
+          },
+          {
+            "name": "Hybrid"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PendingExtensionUpdate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "queued_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "created_slot",
+            "type": "u64"
+          },
+          {
+            "name": "eta_slot",
+            "type": "u64"
+          },
+          {
+            "name": "args",
+            "type": {
+              "defined": {
+                "name": "ExtensionUpdateArgs"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PendingFeeUpdate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "queued_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "created_slot",
+            "type": "u64"
+          },
+          {
+            "name": "eta_slot",
+            "type": "u64"
+          },
+          {
+            "name": "args",
+            "type": {
+              "defined": {
+                "name": "FeeUpdateArgs"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PendingVaultUpdate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "queued_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "created_slot",
+            "type": "u64"
+          },
+          {
+            "name": "eta_slot",
+            "type": "u64"
+          },
+          {
+            "name": "args",
+            "type": {
+              "defined": {
+                "name": "UpdateVaultArgs"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Position",
+      "docs": [
+        "Per-asset deployed-position ledger for an approved venue."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "venue_entry",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault_venue",
+            "type": "pubkey"
+          },
+          {
+            "name": "asset_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "token_account_bump",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RegisterVenueArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "venue_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "target_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "allowed_discriminator_count",
+            "type": "u8"
+          },
+          {
+            "name": "allowed_discriminators",
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "risk_class",
+            "type": "u8"
+          },
+          {
+            "name": "venue_type",
+            "type": {
+              "defined": {
+                "name": "VenueType"
+              }
+            }
+          },
+          {
+            "name": "routine_safe",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RejectRequestArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "request_type",
+            "type": {
+              "defined": {
+                "name": "RequestType"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "nav_update_version",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Request",
+      "docs": [
+        "Request account state for tracking an async deposit/redemption."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "docs": [
+              "Vault address"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "request_type",
+            "docs": [
+              "request type"
+            ],
+            "type": {
+              "defined": {
+                "name": "RequestType"
+              }
+            }
+          },
+          {
+            "name": "request_state",
+            "docs": [
+              "request state"
+            ],
+            "type": {
+              "defined": {
+                "name": "RequestState"
+              }
+            }
+          },
+          {
+            "name": "owner",
+            "docs": [
+              "User that made the request"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "RequestType::Deposit - amount of assets being deposited",
+              "RequestType::Redeem - amount of shares being redeemed"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "price",
+            "docs": [
+              "NAV at which the assets (deposit) or shares (redeem) are being converted"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "asset_mint_address",
+            "docs": [
+              "mint address for deposit request (7575)"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "share_mint_address",
+            "docs": [
+              "share mint selected for this request; base share mint for normal vaults, senior/junior for",
+              "tranche vaults"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "created_at",
+            "docs": [
+              "timestamp, slot or epoch"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "nav_update_version",
+            "docs": [
+              "nav update version (for permissionless actions)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "operator",
+            "docs": [
+              "Operator allowed to claim on behalf of user (delegated controller)"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RequestArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "operator",
+            "type": {
+              "option": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RequestState",
+      "docs": [
+        "Pending: neither approved nor rejected by the vault authority",
+        "Claimable: approved by the vault authority",
+        "Canceled: deposit/redemption request was refunded; account is kept open as a tombstone until the",
+        "subscription/redemption queue advances past this request's ID via",
+        "`skip_canceled_{subscription|redemption}_request`"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Claimable"
+          },
+          {
+            "name": "Canceled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RequestType",
+      "docs": [
+        "The request types:",
+        "Deposit: the user wants to add assets to the vault",
+        "Redeem: the user wants to withdraw assets from the vault"
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Deposit"
+          },
+          {
+            "name": "Redeem"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SetVenueEntryPausedArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TrancheConfig",
+      "docs": [
+        "Optional tranche-mode configuration for a vault."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "senior_share_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "junior_share_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "senior_nav",
+            "docs": [
+              "Per-senior-share NAV placeholder; waterfall updates are future work."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "junior_nav",
+            "docs": [
+              "Per-junior-share NAV placeholder; waterfall updates are future work."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "senior_supply",
+            "docs": [
+              "Cached senior supply, including senior shares committed by approved but unclaimed deposits."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "junior_supply",
+            "docs": [
+              "Cached junior supply, refreshed by waterfall and junior redemption approvals."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "senior_target_bps",
+            "docs": [
+              "Annualized senior target return in basis points."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "min_junior_ratio_bps",
+            "docs": [
+              "Minimum junior buffer ratio in basis points."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "min_request_amounts",
+            "docs": [
+              "Request minimums in order: senior deposit, senior redeem, junior deposit, junior redeem."
+            ],
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "max_request_amounts",
+            "docs": [
+              "Request maximums in order: senior deposit, senior redeem, junior deposit, junior redeem."
+            ],
+            "type": {
+              "array": [
+                "u64",
+                4
+              ]
+            }
+          },
+          {
+            "name": "senior_subscription_request_total",
+            "docs": [
+              "Total queued senior deposit requests ever created."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "senior_subscription_request_last_processed",
+            "docs": [
+              "Last senior deposit request processed or skipped."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "senior_redemption_request_total",
+            "docs": [
+              "Total queued senior redeem requests ever created."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "senior_redemption_request_last_processed",
+            "docs": [
+              "Last senior redeem request processed or skipped."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "junior_subscription_request_total",
+            "docs": [
+              "Total queued junior deposit requests ever created."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "junior_subscription_request_last_processed",
+            "docs": [
+              "Last junior deposit request processed or skipped."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "junior_redemption_request_total",
+            "docs": [
+              "Total queued junior redeem requests ever created."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "junior_redemption_request_last_processed",
+            "docs": [
+              "Last junior redeem request processed or skipped."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_waterfall_slot",
+            "docs": [
+              "Last slot where waterfall accounting ran; zero until implemented."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_waterfall_timestamp",
+            "docs": [
+              "Last timestamp where waterfall accounting ran; zero until implemented."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateDepositFeeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_deposit_fee",
+            "type": {
+              "defined": {
+                "name": "FeeType"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateMinRedemptionArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "threshold",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateMinSubscriptionArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "threshold",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdatePausableRedemptionsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdatePausableSubscriptionsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateVaultArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "paused",
+            "type": {
+              "option": "bool"
+            }
+          },
+          {
+            "name": "fee_recipient",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "manager",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "hot_manager",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "fulfiller",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "breaker",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "nav_mode",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "NavMode"
+                }
+              }
+            }
+          },
+          {
+            "name": "require_fresh_nav",
+            "type": {
+              "option": "bool"
+            }
+          },
+          {
+            "name": "max_nav_delta_bps",
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "max_implied_apy_bps",
+            "type": {
+              "option": "u32"
+            }
+          },
+          {
+            "name": "max_nav_staleness_slots",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "deposit_cap",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "rolling_limit_window_slots",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "manager_rolling_limit",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "external_withdraw_rolling_limit",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "redemption_rolling_limit",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "timelock_delay_slots",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "performance_fee_bps",
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "performance_fee_crystallization_interval_seconds",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "protocol_fee_bps",
+            "type": {
+              "option": "u16"
+            }
+          },
+          {
+            "name": "protocol_fee_recipient",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "instant_redemption_fee_bps",
+            "type": {
+              "option": "u16"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateWithdrawalFeeArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_withdrawal_fee",
+            "type": {
+              "defined": {
+                "name": "FeeType"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Vault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "approved_asset_count",
+            "docs": [
+              "number of approved assets, including the primary upstream-compatible asset"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "share_mint",
+            "docs": [
+              "share mint address"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "vault_token_account",
+            "docs": [
+              "token account holding confirmed vault assets"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "docs": [
+              "authority that can sign permissioned instructions"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "curator",
+            "docs": [
+              "role that owns configuration, role management, and unpause authority"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "manager",
+            "docs": [
+              "role allowed to deploy, pull, and rebalance capital"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "hot_manager",
+            "docs": [
+              "restricted manager role for routine-safe operations"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "fulfiller",
+            "docs": [
+              "role allowed to fulfill async requests and authority-signed NAV updates"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "breaker",
+            "docs": [
+              "role allowed only to pause the vault"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_recipient",
+            "docs": [
+              "pubkey that is required to own the TokenAccount fees are sent to"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "docs": [
+              "paused"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "initialized",
+            "docs": [
+              "once a vault is initialized, no extensions can be added"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "pending_vault",
+            "docs": [
+              "token account holding assets from deposits awaiting share issuance"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "nav",
+            "docs": [
+              "net asset value (assets per share), default 0 until first NAV update"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "nav_version",
+            "docs": [
+              "nav version, incremented on each NAV update"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "nav_mode",
+            "docs": [
+              "NAV validation mode used by pricing-dependent instructions"
+            ],
+            "type": {
+              "defined": {
+                "name": "NavMode"
+              }
+            }
+          },
+          {
+            "name": "require_fresh_nav",
+            "docs": [
+              "when true, settlement requires a NAV update after request creation"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "max_nav_delta_bps",
+            "docs": [
+              "maximum allowed NAV delta per update in basis points; zero disables the guard"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "max_implied_apy_bps",
+            "docs": [
+              "maximum annualized NAV increase in basis points; zero disables the guard"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "max_nav_staleness_slots",
+            "docs": [
+              "maximum allowed slots since last NAV update; zero disables the guard"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_nav_update_slot",
+            "docs": [
+              "slot of the most recent NAV update"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "last_nav_update_timestamp",
+            "docs": [
+              "unix timestamp of the most recent NAV update"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "pending_async_requests",
+            "docs": [
+              "count of pending async deposit/withdrawal requests"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "total_asset_balance",
+            "docs": [
+              "virtual vault asset balance, accounts for tokens that may",
+              "have been withdrawn by the vault authority"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "deposit_cap",
+            "docs": [
+              "maximum total assets accepted by the vault; zero disables the cap"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "pending_deposit_amount",
+            "docs": [
+              "pending deposit amount reserved against the deposit cap"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "rolling_limit_window_slots",
+            "docs": [
+              "rolling-limit accounting window in slots; zero disables phase-1 limits"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "manager_rolling_limit",
+            "docs": [
+              "manager deploy/pull cap per rolling window"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "manager_window_start_slot",
+            "docs": [
+              "start slot for manager deploy/pull rolling-limit accounting"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "manager_window_amount",
+            "docs": [
+              "consumed manager deploy/pull amount in the current rolling window"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "external_withdraw_rolling_limit",
+            "docs": [
+              "externally managed withdrawal cap per rolling window"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "redemption_rolling_limit",
+            "docs": [
+              "aggregate redemption settlement cap per rolling window"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "external_withdraw_window_start_slot",
+            "docs": [
+              "start slot for externally managed withdrawal rolling-limit accounting"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "external_withdraw_window_amount",
+            "docs": [
+              "consumed external-withdraw amount in the current rolling window"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "redemption_window_start_slot",
+            "docs": [
+              "start slot for redemption-settlement rolling-limit accounting"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "redemption_window_amount",
+            "docs": [
+              "consumed redemption-settlement amount in the current rolling window"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "timelock_delay_slots",
+            "docs": [
+              "curator config timelock delay in slots"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "performance_fee_bps",
+            "docs": [
+              "performance fee in basis points"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "performance_fee_crystallization_interval_seconds",
+            "docs": [
+              "minimum seconds between performance-fee crystallizations; zero disables the interval gate"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "protocol_fee_bps",
+            "docs": [
+              "protocol fee skim in basis points"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "protocol_fee_recipient",
+            "docs": [
+              "pubkey that is required to own the TokenAccount protocol fee skims are sent to"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "instant_redemption_fee_bps",
+            "docs": [
+              "instant-redemption fee in basis points"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "high_water_mark",
+            "docs": [
+              "high-water mark used by performance fee accounting"
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "tranche_config",
+            "docs": [
+              "optional tranche configuration PDA; when set, NAV updates must run waterfall accounting"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "last_fee_crystallization_timestamp",
+            "docs": [
+              "unix timestamp of the last performance-fee crystallization"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "reserve_bump",
+            "type": "u8"
+          },
+          {
+            "name": "pending_vault_bump",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "pending_authority",
+            "type": {
+              "option": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultAsset",
+      "docs": [
+        "Per-asset account for Phase 2 multi-asset custody."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "docs": [
+              "vault this asset belongs to"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "asset_mint",
+            "docs": [
+              "approved asset mint"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "reserve",
+            "docs": [
+              "PDA token account holding idle/confirmed assets for this mint"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_vault",
+            "docs": [
+              "PDA token account holding deposits awaiting settlement for this mint"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "idle_balance",
+            "docs": [
+              "idle accounting balance for this asset"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "deployed_balance",
+            "docs": [
+              "deployed accounting balance for this asset"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "pending_deposit_amount",
+            "docs": [
+              "pending deposit reservations for this asset"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "deposit_cap",
+            "docs": [
+              "per-asset cap; zero disables the cap"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "manager_window_start_slot",
+            "docs": [
+              "slot when this secondary asset's manager rolling-limit window started"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "manager_window_amount",
+            "docs": [
+              "amount consumed in this secondary asset's current manager rolling window"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "reserve_bump",
+            "type": "u8"
+          },
+          {
+            "name": "pending_vault_bump",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VaultVenue",
+      "docs": [
+        "Per-vault approval for a venue entry."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "venue_entry",
+            "type": "pubkey"
+          },
+          {
+            "name": "target_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "routine_safe",
+            "type": "bool"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "position_count",
+            "docs": [
+              "future deploy/pull instructions must keep this at zero before removal"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "approved_at_slot",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VenueEntry",
+      "docs": [
+        "Program-level venue entry created by a registry authority namespace."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "registry_authority",
+            "docs": [
+              "signer namespace that created and can pause this venue entry"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "venue_id",
+            "docs": [
+              "fixed caller-defined venue identifier"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "target_program",
+            "docs": [
+              "program that future validated CPI actions may target"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "allowed_discriminator_count",
+            "docs": [
+              "number of active 8-byte discriminators in `allowed_discriminators`"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "allowed_discriminators",
+            "docs": [
+              "flat list of allowed 8-byte instruction discriminators"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                64
+              ]
+            }
+          },
+          {
+            "name": "risk_class",
+            "docs": [
+              "integrator-defined risk class for reading/UI and later policy checks"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "venue_type",
+            "type": {
+              "defined": {
+                "name": "VenueType"
+              }
+            }
+          },
+          {
+            "name": "routine_safe",
+            "docs": [
+              "whether the hot manager may eventually use this venue for routine actions"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "paused",
+            "docs": [
+              "paused entries cannot be newly approved by vaults"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VenueType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "ExternalProtocol"
+          },
+          {
+            "name": "VaultV2"
+          }
+        ]
+      }
+    }
+  ]
+}

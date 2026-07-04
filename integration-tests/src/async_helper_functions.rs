@@ -9,9 +9,9 @@ use solana_sdk::{
 };
 use solana_system_interface::instruction::create_account;
 
-use async_vault_client::{
+use async_vault_v2_client::{
     lite::SendTransaction, sdk::program_id, CreateVaultBuilder as CreateAsyncVaultBuilder, Request,
-    RequestType, Vault as AsyncVault,
+    RequestType, UpdateVaultBuilder, Vault as AsyncVault,
 };
 use borsh::BorshSerialize;
 
@@ -264,7 +264,17 @@ pub fn get_mint_supply(account: &Account) -> u64 {
     }
 }
 
-pub fn set_up_async_vault(
+pub fn get_mint_authority(account: &Account) -> Option<Pubkey> {
+    let data = account.data();
+    assert!(data.len() >= 36, "mint account data too short");
+    match u32::from_le_bytes(data[0..4].try_into().unwrap()) {
+        0 => None,
+        1 => Some(Pubkey::new_from_array(data[4..36].try_into().unwrap())),
+        tag => panic!("invalid mint authority option tag: {tag}"),
+    }
+}
+
+pub fn set_up_async_vault_v2(
     svm: &mut LiteSVM,
     asset_token_program: Pubkey,
     asset_mint_transfer_fee_bps: Option<u16>,
@@ -345,6 +355,15 @@ pub fn set_up_async_vault(
         .instruction()
         .send_transaction(svm, &payer.pubkey(), &[&payer, &mint_authority])
         .expect("vault creation should succeed");
+
+    UpdateVaultBuilder::new()
+        .authority(authority.pubkey())
+        .share_mint(share_mint.pubkey())
+        .vault(vault_pubkey)
+        .require_fresh_nav(false)
+        .instruction()
+        .send_transaction(svm, &authority.pubkey(), &[&authority])
+        .expect("upstream-parity vault config should succeed");
 
     let user_token_account = create_ata(svm, &user, &asset_mint.pubkey(), &asset_token_program);
     let fee_recipient_ata = create_ata(

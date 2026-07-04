@@ -1,9 +1,12 @@
 # Security Policy
 
+Solana Vault V2 is an unaudited community fork. It is not for mainnet use or
+production funds without an independent security review.
+
 ## Reporting security problems
 
-**DO NOT CREATE A GITHUB ISSUE** to report a security problem.
+**DO NOT CREATE A PUBLIC GITHUB ISSUE** to report a security problem.
 
-Instead please use this [Report a Vulnerability](https://github.com/solana-foundation/vault/security/advisories/new) link.
-Provide a helpful title and detailed description of the problem.
-Expect a response as fast as possible in the advisory, typically within 72 hours.
+Use the repository's private security advisory flow, or contact the maintainer
+through a private channel. Provide a helpful title, affected commit, affected
+program ID, reproduction steps, and impact analysis.
