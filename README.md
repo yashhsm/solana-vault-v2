@@ -3,125 +3,128 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Built with Anchor](https://img.shields.io/badge/Built%20with-Anchor-blue)](https://www.anchor-lang.com/)
 
-> Reference implementation only. Solana Vault V2 is unaudited, not deployed to
-> mainnet-beta, and not for production funds.
+Solana Vault V2 is an experimental, MIT-licensed community fork of
+[solana-foundation/vault](https://github.com/solana-foundation/vault). It keeps
+the upstream async vault model, then adds a broader control surface for
+role-separated operations, stricter NAV-based settlement, multi-asset accounting
+scaffolding, venue approval metadata, tranche accounting, instant settlement,
+and vault-level protocol fee splits.
 
-## Attribution
+> Reference implementation only. This fork is unaudited, not deployed to
+> mainnet-beta, and not ready for production funds.
 
-Solana Vault V2 is a community extension of
-[solana-foundation/vault](https://github.com/solana-foundation/vault), pinned at
-commit `c667cf8079d90f79fc0daf32d332a3693b37e6c6`.
+## Why This Exists
 
-Upstream provides the audited single-asset async vault lifecycle, Token-2022
-guards, TLV extension system, request queues, deposit/withdrawal fees, and
-authority-controlled NAV update flow. The upstream Cantina APEX report is copied
-at [audits/apex-scan-june-22-2026.pdf](audits/apex-scan-june-22-2026.pdf), and
-the audited-through upstream commit is
-`ce2b5483de53cd015efbbdea70ecec75d976bb08`.
+The upstream Solana Foundation vault program provides a compact single-asset
+async vault with Token-2022 compatibility, TLV extensions, request queues,
+deposit/withdrawal fees, and authority-controlled NAV updates. V2 explores what
+a more operational vault stack could look like while preserving that base model.
 
-V2 adds a fresh program ID, crate/client/package rename, five role fields,
-curator/fulfiller settlement permissions, breaker-only pause, NAV freshness and
-bounded-update guards, deposit-cap reservation accounting, a partial asset-PDA
-approval and async secondary-asset surface, a creation-time externally managed withdrawal opt-in,
-and generated clients for the renamed IDL.
-The first Phase 4 tranche slice adds a creation-time `TrancheConfig` scaffold
-for senior/junior share mints, waterfall accounting on NAV updates, and
-tranche-scoped async request settlement with junior-ratio floor checks.
-Tranche request creation also supports per-direction min/max amount bounds for
-senior deposit, senior redeem, junior deposit, and junior redeem.
-The first Phase 5 instant-settlement slice adds a creation-time
-`InstantSettlement` opt-in for primary-asset, non-tranche instant deposit and
-redeem flows, with optional min/max per-transaction deposit/redeem bounds and
-per-user rolling limits.
+The current implementation focuses on testable on-chain primitives:
+
+- separate curator, manager, hot-manager, fulfiller, and breaker roles
+- fresh-NAV settlement and bounded NAV update checks
+- deposit caps and rolling-limit buckets
+- timelocked vault, fee, and mutable TLV extension changes
+- approved secondary-asset records and per-asset ledgers
+- externally managed withdrawal opt-in and venue approval metadata
+- constrained SPL token-account position stubs
+- senior/junior tranche accounting and tranche-scoped async requests
+- primary-asset instant deposit/redeem flows
+- vault-level protocol fee recipient splits
 
 This fork is not an official Solana Foundation release and does not imply
 Solana Foundation endorsement.
 
-## Status
+## Architecture
 
-Implemented:
+At a high level, V2 is still an Anchor program centered on one `Vault` PDA per
+share mint. Optional capabilities are layered through typed PDAs and TLV
+extensions instead of one large always-on account graph.
 
-- Phase 0 fork baseline: `async_vault_v2`, fresh program ID
-  `3Y4rpSYqrW9JRuiS3YosEXSSYHai4sFH3XMzAQmkNzFg`, renamed Rust/TypeScript
-  clients, and committed `idl/async_vault_v2.json`.
-- Phase 1 subset: role fields, curator-only config mutation, fulfiller request
-  approval/rejection, breaker-only pause, strict fresh-NAV settlement by default,
-  optional NAV delta/APY/staleness guards, aggregate deposit cap reservations,
-  external-withdrawal/redemption and primary manager deploy/pull rolling limits,
-  a vault-config timelock queue, deposit/withdrawal fee timelock queue, queued
-  mutable non-fee TLV extension updates, and
-  single-tranche performance-fee/HWM crystallization on NAV updates, including
-  a configurable crystallization interval.
-- Phase 2 asset-PDA async lifecycle slice: curator-only secondary asset add/remove,
-  per-asset reserve and pending token PDAs, max-approved-asset guard,
-  zero-balance removal guard, secondary-asset deposit and redemption lifecycle,
-  and per-asset deposit cap enforcement.
-- Phase 3 withdrawal-gating slice: `withdraw_assets` is disabled by default and
-  requires the `ExternallyManagedWithdrawals` TLV extension initialized before
-  vault initialization.
-- Phase 3 venue registry state slice: registry-authority `VenueEntry` PDAs and
-  curator-controlled `VaultVenue` approvals exist as metadata only. Validated
-  venue CPI execution remains future work.
-- Phase 3 position stub: primary and approved-secondary `Position` PDAs can
-  deploy/pull between vault reserves and vault-owned SPL token accounts with
-  post-transfer balance-delta verification and manager rolling-limit
-  enforcement. This is not arbitrary protocol execution.
-- Phase 4 tranche scaffold/waterfall: `initialize_tranches` records
-  senior/junior share mints before vault initialization, reuses the existing
-  `Vault.share_mint` as one tranche mint, transfers the second tranche mint to
-  vault authority, stores `Vault.tranche_config`, and `update_vault_nav` applies
-  senior-target gain allocation plus junior-first loss allocation when tranche
-  accounts are supplied. Async request lifecycle instructions now bind requests
-  to the selected base/senior/junior share mint and mint/burn that selected
-  mint during settlement, claim, cancellation, and rejection flows. Approval
-  rejects senior deposits and junior redemptions that would breach
-  `min_junior_ratio_bps`, and request creation enforces configured per-tranche
-  min/max amount bounds. Optional subscription/redemption queues use
-  senior/junior lane-local counters in tranche mode.
-- Phase 5 primary instant settlement: `initialize_instant_settlement` enables
-  `instant_deposit` and `instant_redeem` for initialized, unpaused, non-tranche
-  vaults using the primary asset and base share mint. The path requires a set
-  NAV, honors NAV staleness guards, applies existing deposit/withdrawal fees,
-  charges `instant_redemption_fee_bps` on instant redeems, checks reserve
-  liquidity, enforces optional creation-time min/max instant deposit and redeem
-  bounds plus per-user rolling limits, and updates `Vault.total_asset_balance`
-  immediately.
-- Vault-level protocol fee split: `protocol_fee_bps` and
-  `protocol_fee_recipient` split already-computed deposit, withdrawal, primary
-  instant-redemption, and single-tranche performance fees before the remaining
-  fee is paid to the regular fee recipient.
-- Upstream async vault lifecycle and TLV extensions remain ported to the renamed
-  program.
+```mermaid
+flowchart TD
+    User[Users and operators] --> Requests[Async deposit/redeem requests]
+    User --> Instant[Instant settlement]
 
-Not implemented:
+    Curator[Curator] --> Config[Vault config and timelock queues]
+    Fulfiller[Fulfiller] --> Requests
+    Fulfiller --> NAV[NAV updates]
+    Breaker[Breaker] --> Pause[Pause only]
+    Manager[Manager and hot manager] --> Positions[Venue position stubs]
 
-- USD-normalized multi-asset NAV, validated venue CPI execution,
-  vault-in-vault cycle prevention, tranche-aware or secondary-asset instant
-  settlement, oracle adapters, tranche-aware performance fees, and
-  program-wide protocol fee governance/configuration.
+    Requests --> Vault[Vault PDA]
+    Instant --> Vault
+    NAV --> Vault
+    Config --> Vault
 
-See [docs/SPEC_COVERAGE.md](docs/SPEC_COVERAGE.md) and [REPORT.md](REPORT.md)
-for the exact coverage table and known limitations.
+    Vault --> TLV[Vault TLV extensions]
+    Vault --> Assets[VaultAsset PDAs]
+    Vault --> Venues[VenueEntry and VaultVenue PDAs]
+    Vault --> Tranches[TrancheConfig PDA]
+    Vault --> Fees[Fee recipients]
 
-## Programs
+    Assets --> Positions
+    Venues --> Positions
+```
 
-| Network | Program ID                                     | Status                     |
-| ------- | ---------------------------------------------- | -------------------------- |
-| Local   | `3Y4rpSYqrW9JRuiS3YosEXSSYHai4sFH3XMzAQmkNzFg` | Build/test target          |
-| Devnet  | `3Y4rpSYqrW9JRuiS3YosEXSSYHai4sFH3XMzAQmkNzFg` | Configured, not verified   |
-| Mainnet | N/A                                            | Not deployed / unsupported |
+### Core Accounts
 
-## Documentation
+- `Vault`: primary configuration, roles, NAV state, accounting counters, fee
+  settings, rolling-limit buckets, and links to optional state.
+- `Request`: async deposit/redeem lifecycle account, now asset and share-mint
+  scoped for V2 flows.
+- `VaultAsset`: approved secondary asset metadata plus per-asset reserve,
+  pending, idle, deployed, and cap accounting.
+- `VenueEntry` and `VaultVenue`: venue registry metadata and per-vault approval
+  state. These do not execute arbitrary CPI yet.
+- `Position`: constrained SPL token-account custody stub for manager deploy/pull
+  tests.
+- `TrancheConfig`: senior/junior share-mint config, NAV snapshots, request
+  limits, FIFO lane counters, and junior-ratio guard data.
+- `PendingVaultUpdate`, `PendingFeeUpdate`, `PendingExtensionUpdate`: typed
+  timelock queues for delayed config changes.
+- `InstantSettlementUser`: optional per-user instant settlement rolling-limit
+  bucket.
 
-- [Design Decisions](DESIGN_DECISIONS.md)
-- [Account Layout](docs/ACCOUNTS.md)
-- [Integration Mapping](docs/INTEGRATION.md)
-- [Spec Coverage](docs/SPEC_COVERAGE.md)
-- [Upstream Test Map](docs/UPSTREAM_TEST_MAP.md)
-- [Sequence Diagrams](programs/async_vault_v2/docs/SEQUENCES.md)
-- [Subscription Queue](programs/async_vault_v2/docs/extensions/SubscriptionQueue.md)
+### Program Shape
 
-## Local Development
+- Program name: `async_vault_v2`
+- Local/test program ID: `3Y4rpSYqrW9JRuiS3YosEXSSYHai4sFH3XMzAQmkNzFg`
+- IDL: [idl/async_vault_v2.json](idl/async_vault_v2.json)
+- Rust client: [clients/rust/async_vault_v2](clients/rust/async_vault_v2)
+
+## Implementation Status
+
+Implemented or partially implemented:
+
+- Phase 0 fork baseline, rename, clients, IDL, program ID, and provenance docs.
+- Phase 1 roles, fresh NAV, NAV bounds, deposit caps, rolling limits,
+  timelocks, fee queues, performance fees, and protocol fee splits.
+- Phase 2 approved secondary-asset PDAs and async secondary deposit/redeem
+  accounting.
+- Phase 3 externally managed withdrawal opt-in, venue metadata, per-vault venue
+  approvals, and constrained position stubs.
+- Phase 4 tranche config, waterfall accounting, tranche-scoped requests,
+  request bounds, junior-ratio guards, and lane-local FIFO queue counters.
+- Phase 5 primary-asset, non-tranche instant deposit/redeem with optional
+  per-transaction and per-user limits.
+
+Not implemented yet:
+
+- USD-normalized multi-asset NAV
+- oracle adapters and oracle-backed NAV validation
+- validated arbitrary venue CPI execution
+- external protocol custody accounting
+- vault-in-vault cycle prevention
+- secondary-asset or tranche-aware instant settlement
+- tranche-aware performance fees and high-water marks
+- program-wide protocol fee governance/configuration
+
+See [docs/SPEC_COVERAGE.md](docs/SPEC_COVERAGE.md) for the requirement-by-
+requirement coverage table.
+
+## Quickstart
 
 ### Prerequisites
 
@@ -148,11 +151,43 @@ cargo test -p async_vault_v2 -p vault_common
 cargo test -p integration-tests
 ```
 
-## Security
+## Documentation
 
-The upstream audit does not cover V2 changes. Before any production use, audit
-the exact deployment commit and program ID. See [AUDIT_STATUS.md](AUDIT_STATUS.md)
-and [SECURITY.md](SECURITY.md).
+- [Build Report](REPORT.md)
+- [Design Decisions](DESIGN_DECISIONS.md)
+- [Account Layout](docs/ACCOUNTS.md)
+- [Integration Mapping](docs/INTEGRATION.md)
+- [Spec Coverage](docs/SPEC_COVERAGE.md)
+- [Upstream Test Map](docs/UPSTREAM_TEST_MAP.md)
+- [Sequence Diagrams](programs/async_vault_v2/docs/SEQUENCES.md)
+- [Security Policy](SECURITY.md)
+
+## Verification Snapshot
+
+The latest local verification pass for this snapshot included:
+
+- `anchor build --ignore-keys`
+- `cargo test -p async_vault_v2 -p vault_common`
+- `cargo test -p integration-tests`
+- `cargo clippy -p async_vault_v2 -p vault_common -p integration-tests -- -D warnings`
+- `cargo +nightly fmt -p async_vault_v2 -p vault_common -p integration-tests -p async-vault-v2-client -- --check`
+- `pnpm run format:check`
+- `pnpm lint`
+- `pnpm run typecheck`
+
+The upstream audit does not cover V2 changes. See [AUDIT_STATUS.md](AUDIT_STATUS.md)
+and [REPORT.md](REPORT.md) for details and known gaps.
+
+## Attribution
+
+This repository is forked from
+[solana-foundation/vault](https://github.com/solana-foundation/vault) at commit
+`c667cf8079d90f79fc0daf32d332a3693b37e6c6`.
+
+The upstream Cantina APEX report is copied at
+[audits/apex-scan-june-22-2026.pdf](audits/apex-scan-june-22-2026.pdf), and the
+audited-through upstream commit is
+`ce2b5483de53cd015efbbdea70ecec75d976bb08`.
 
 ## License
 
