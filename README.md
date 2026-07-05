@@ -3,9 +3,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Built with Anchor](https://img.shields.io/badge/Built%20with-Anchor-blue)](https://www.anchor-lang.com/)
 
-Solana Vault V2 is an experimental, MIT-licensed async vault program for Solana,
-built by SendAI. It implements a tokenized vault with a NAV-based async
-deposit/redeem lifecycle and layers on the control surface a real fund needs:
+Solana Vault V2 is an experimental, MIT-licensed async vault program for Solana.
+It implements a tokenized vault with a NAV-based async deposit/redeem lifecycle
+and layers on the control surface a real fund needs:
 role-separated operations, stricter NAV-based settlement, multi-asset
 accounting, venue approval metadata, tranche accounting, instant settlement, and
 protocol fee routing with an optional program-level recipient config.
@@ -186,7 +186,7 @@ and [REPORT.md](REPORT.md) for details and known gaps.
 
 ## Attribution
 
-Built by SendAI. Originally derived from
+Originally derived from
 [solana-foundation/vault](https://github.com/solana-foundation/vault) (MIT); see
 [NOTICE](NOTICE) for the upstream commit and license details. The V2 program is
 substantially new work and is not covered by the upstream audit — see
