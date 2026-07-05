@@ -4,7 +4,10 @@ use crate::{
     error::AsyncVaultError,
     extensions::{
         init_vault_extension,
-        instant_settlement::{validate_instant_settlement_thresholds, InstantSettlement},
+        instant_settlement::{
+            assert_instant_settlement_safety_guards, validate_instant_settlement_thresholds,
+            InstantSettlement,
+        },
         VaultExtension,
     },
     state::Vault,
@@ -48,6 +51,10 @@ pub fn handler(
         args.instant_redemption_fee_bps <= vault_common::MAX_BPS,
         AsyncVaultError::FeeBpsExceeded
     );
+    assert_instant_settlement_safety_guards(
+        args.instant_redemption_fee_bps,
+        ctx.accounts.vault.max_nav_staleness_slots,
+    )?;
     validate_instant_settlement_thresholds(
         args.min_deposit_amount,
         args.max_deposit_amount,

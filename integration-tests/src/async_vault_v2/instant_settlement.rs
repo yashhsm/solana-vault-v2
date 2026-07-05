@@ -4,13 +4,13 @@ use anchor_spl::{
 use async_vault_v2_client::{
     extensions::instant_settlement::get_state as get_instant_settlement_state,
     lite::SendTransaction, sdk::program_id, InitializeInstantSettlementBuilder,
-    InitializeTranchesBuilder, InitializeVaultBuilder, InstantDepositBuilder, InstantRedeemBuilder,
-    UpdateVaultBuilder, UpdateVaultNavBuilder, Vault,
+    InitializeProtocolFeeConfigBuilder, InitializeTranchesBuilder, InitializeVaultBuilder,
+    InstantDepositBuilder, InstantRedeemBuilder, UpdateVaultBuilder, UpdateVaultNavBuilder, Vault,
 };
 use litesvm::LiteSVM;
 use solana_sdk::{
-    account::ReadableAccount, clock::Clock, pubkey::Pubkey, signature::Keypair, signer::Signer,
-    transaction::Transaction,
+    account::ReadableAccount, clock::Clock, instruction::AccountMeta, pubkey::Pubkey,
+    signature::Keypair, signer::Signer, transaction::Transaction,
 };
 use test_case::test_case;
 
@@ -31,6 +31,8 @@ use crate::{
 
 const TRANCHE_CONFIG_SEED: &[u8] = b"tranches";
 const INSTANT_USER_LIMIT_SEED: &[u8] = b"instant_user";
+const PROTOCOL_FEE_CONFIG_SEED: &[u8] = b"protocol_fee_config";
+const DEFAULT_INSTANT_NAV_STALENESS_SLOTS: u64 = 64;
 
 fn add_program(svm: &mut LiteSVM) {
     let program_bytes = include_bytes!("../../../target/deploy/async_vault_v2.so");
@@ -49,12 +51,38 @@ fn instant_user_address(vault: Pubkey, user: Pubkey) -> Pubkey {
     .0
 }
 
+fn protocol_fee_config_address() -> Pubkey {
+    Pubkey::find_program_address(&[PROTOCOL_FEE_CONFIG_SEED], &program_id()).0
+}
+
 fn user_asset_account(user: Pubkey, asset_mint: Pubkey) -> Pubkey {
     get_associated_token_address_with_program_id(&user, &asset_mint, &token::ID)
 }
 
 fn token_account(user: Pubkey, mint: Pubkey, token_program: Pubkey) -> Pubkey {
     get_associated_token_address_with_program_id(&user, &mint, &token_program)
+}
+
+fn read_vault(svm: &LiteSVM, vault: Pubkey) -> Vault {
+    let account = svm.get_account(&vault).expect("vault should exist");
+    Vault::from_bytes(account.data()).unwrap()
+}
+
+fn configure_nav_staleness(
+    svm: &mut LiteSVM,
+    authority: &Keypair,
+    vault: Pubkey,
+    max_nav_staleness_slots: u64,
+) {
+    let vault_config = read_vault(svm, vault);
+    UpdateVaultBuilder::new()
+        .authority(authority.pubkey())
+        .share_mint(vault_config.share_mint)
+        .vault(vault)
+        .max_nav_staleness_slots(max_nav_staleness_slots)
+        .instruction()
+        .send_transaction(svm, &authority.pubkey(), &[authority])
+        .expect("nav staleness config should succeed");
 }
 
 fn enable_transfer_fee(
@@ -114,6 +142,7 @@ fn initialize_instant_settlement_with_user_limits(
     max_user_deposit_amount: u64,
     max_user_redeem_shares: u64,
 ) {
+    configure_nav_staleness(svm, authority, vault, DEFAULT_INSTANT_NAV_STALENESS_SLOTS);
     InitializeInstantSettlementBuilder::new()
         .payer(payer.pubkey())
         .authority(authority.pubkey())
@@ -213,6 +242,7 @@ fn instant_redeem(
     reserve: Pubkey,
     user_asset_account: Pubkey,
     user_share_account: Pubkey,
+    fee_recipient_token_account: Pubkey,
     shares: u64,
 ) -> litesvm::types::TransactionResult {
     InstantRedeemBuilder::new()
@@ -224,7 +254,7 @@ fn instant_redeem(
         .vault_token_account(reserve)
         .user_share_account(user_share_account)
         .user_asset_account(user_asset_account)
-        .fee_recipient_token_account(None)
+        .fee_recipient_token_account(Some(fee_recipient_token_account))
         .asset_token_program(token::ID)
         .share_token_program(token::ID)
         .shares(shares)
@@ -309,15 +339,21 @@ fn test_initialize_instant_settlement_fails(
             .expect("vault initialization should succeed");
     }
     if init_extension_first {
-        initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 0);
+        initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 1);
         svm.expire_blockhash();
     }
+    configure_nav_staleness(
+        &mut svm,
+        &authority,
+        vault_pubkey,
+        DEFAULT_INSTANT_NAV_STALENESS_SLOTS,
+    );
 
     let err = InitializeInstantSettlementBuilder::new()
         .payer(payer.pubkey())
         .authority(authority.pubkey())
         .vault(vault_pubkey)
-        .instant_redemption_fee_bps(0)
+        .instant_redemption_fee_bps(1)
         .min_deposit_amount(0)
         .max_deposit_amount(0)
         .min_redeem_shares(0)
@@ -352,6 +388,12 @@ fn test_initialize_instant_settlement_stores_thresholds() {
         _user_share_account,
     ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 0);
 
+    configure_nav_staleness(
+        &mut svm,
+        &authority,
+        vault_pubkey,
+        DEFAULT_INSTANT_NAV_STALENESS_SLOTS,
+    );
     InitializeInstantSettlementBuilder::new()
         .payer(payer.pubkey())
         .authority(authority.pubkey())
@@ -406,15 +448,77 @@ fn test_initialize_instant_settlement_rejects_invalid_threshold_config(
         _user_share_account,
     ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 0);
 
+    configure_nav_staleness(
+        &mut svm,
+        &authority,
+        vault_pubkey,
+        DEFAULT_INSTANT_NAV_STALENESS_SLOTS,
+    );
     let err = InitializeInstantSettlementBuilder::new()
         .payer(payer.pubkey())
         .authority(authority.pubkey())
         .vault(vault_pubkey)
-        .instant_redemption_fee_bps(0)
+        .instant_redemption_fee_bps(1)
         .min_deposit_amount(min_deposit_amount)
         .max_deposit_amount(max_deposit_amount)
         .min_redeem_shares(min_redeem_shares)
         .max_redeem_shares(max_redeem_shares)
+        .max_user_deposit_amount(0)
+        .max_user_redeem_shares(0)
+        .instruction()
+        .send_transaction(&mut svm, &payer.pubkey(), &[&payer, &authority])
+        .unwrap_err();
+
+    assert_error_code(
+        &err,
+        INVALID_INSTANT_SETTLEMENT_THRESHOLD_CONFIG,
+        "InvalidInstantSettlementThresholdConfig",
+    );
+}
+
+#[test_case(0, true ; "zero_fee")]
+#[test_case(1, false ; "zero_staleness")]
+fn test_initialize_instant_settlement_requires_fee_and_staleness(
+    instant_redemption_fee_bps: u16,
+    configure_staleness: bool,
+) {
+    let mut svm = LiteSVM::new();
+    add_program(&mut svm);
+
+    let (
+        authority,
+        payer,
+        _mint_authority,
+        _asset_mint,
+        _share_mint,
+        _user,
+        _operator,
+        _fee_recipient,
+        _reserve_pubkey,
+        vault_pubkey,
+        _pending_vault_pubkey,
+        _fee_recipient_ata,
+        _user_share_account,
+    ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 0);
+
+    if configure_staleness {
+        configure_nav_staleness(
+            &mut svm,
+            &authority,
+            vault_pubkey,
+            DEFAULT_INSTANT_NAV_STALENESS_SLOTS,
+        );
+    }
+
+    let err = InitializeInstantSettlementBuilder::new()
+        .payer(payer.pubkey())
+        .authority(authority.pubkey())
+        .vault(vault_pubkey)
+        .instant_redemption_fee_bps(instant_redemption_fee_bps)
+        .min_deposit_amount(0)
+        .max_deposit_amount(0)
+        .min_redeem_shares(0)
+        .max_redeem_shares(0)
         .max_user_deposit_amount(0)
         .max_user_redeem_shares(0)
         .instruction()
@@ -449,11 +553,17 @@ fn test_instant_deposit_respects_thresholds() {
         user_share_account,
     ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 100);
 
+    configure_nav_staleness(
+        &mut svm,
+        &authority,
+        vault_pubkey,
+        DEFAULT_INSTANT_NAV_STALENESS_SLOTS,
+    );
     InitializeInstantSettlementBuilder::new()
         .payer(payer.pubkey())
         .authority(authority.pubkey())
         .vault(vault_pubkey)
-        .instant_redemption_fee_bps(0)
+        .instant_redemption_fee_bps(1)
         .min_deposit_amount(20)
         .max_deposit_amount(40)
         .min_redeem_shares(0)
@@ -581,15 +691,21 @@ fn test_instant_redeem_respects_thresholds() {
         reserve_pubkey,
         vault_pubkey,
         _pending_vault_pubkey,
-        _fee_recipient_ata,
+        fee_recipient_ata,
         user_share_account,
     ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 100);
 
+    configure_nav_staleness(
+        &mut svm,
+        &authority,
+        vault_pubkey,
+        DEFAULT_INSTANT_NAV_STALENESS_SLOTS,
+    );
     InitializeInstantSettlementBuilder::new()
         .payer(payer.pubkey())
         .authority(authority.pubkey())
         .vault(vault_pubkey)
-        .instant_redemption_fee_bps(0)
+        .instant_redemption_fee_bps(1)
         .min_deposit_amount(0)
         .max_deposit_amount(0)
         .min_redeem_shares(20)
@@ -635,7 +751,7 @@ fn test_instant_redeem_respects_thresholds() {
         .vault_token_account(reserve_pubkey)
         .user_share_account(user_share_account)
         .user_asset_account(user_asset_account)
-        .fee_recipient_token_account(None)
+        .fee_recipient_token_account(Some(fee_recipient_ata))
         .asset_token_program(token::ID)
         .share_token_program(token::ID)
         .shares(19)
@@ -705,7 +821,7 @@ fn test_instant_redeem_respects_thresholds() {
         .vault_token_account(reserve_pubkey)
         .user_share_account(user_share_account)
         .user_asset_account(user_asset_account)
-        .fee_recipient_token_account(None)
+        .fee_recipient_token_account(Some(fee_recipient_ata))
         .asset_token_program(token::ID)
         .share_token_program(token::ID)
         .shares(40)
@@ -714,7 +830,7 @@ fn test_instant_redeem_respects_thresholds() {
         .expect("instant redeem at threshold should succeed");
     assert_eq!(
         get_token_account_amount(&svm.get_account(&user_asset_account).unwrap()),
-        user_assets_before + 40
+        user_assets_before + 39
     );
 }
 
@@ -735,10 +851,10 @@ fn test_zero_user_limits_do_not_create_instant_user_bucket() {
         reserve_pubkey,
         vault_pubkey,
         _pending_vault_pubkey,
-        _fee_recipient_ata,
+        fee_recipient_ata,
         user_share_account,
     ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 100);
-    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 0);
+    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 1);
     initialize_vault_and_nav(&mut svm, &authority, share_mint.pubkey(), vault_pubkey);
 
     let user_asset_account = user_asset_account(user.pubkey(), asset_mint.pubkey());
@@ -772,7 +888,7 @@ fn test_zero_user_limits_do_not_create_instant_user_bucket() {
         .vault_token_account(reserve_pubkey)
         .user_share_account(user_share_account)
         .user_asset_account(user_asset_account)
-        .fee_recipient_token_account(None)
+        .fee_recipient_token_account(Some(fee_recipient_ata))
         .asset_token_program(token::ID)
         .share_token_program(token::ID)
         .shares(10)
@@ -807,7 +923,7 @@ fn test_instant_deposit_user_limit_requires_window_config() {
         &payer,
         &authority,
         vault_pubkey,
-        0,
+        1,
         50,
         0,
     );
@@ -876,7 +992,7 @@ fn test_instant_deposit_user_limit_requires_bucket_account() {
         &payer,
         &authority,
         vault_pubkey,
-        0,
+        1,
         50,
         0,
     );
@@ -945,7 +1061,7 @@ fn test_instant_deposit_user_limit_is_per_user_and_resets() {
         &payer,
         &authority,
         vault_pubkey,
-        0,
+        1,
         60,
         0,
     );
@@ -1064,7 +1180,7 @@ fn test_instant_redeem_user_limit_resets() {
         reserve_pubkey,
         vault_pubkey,
         _pending_vault_pubkey,
-        _fee_recipient_ata,
+        fee_recipient_ata,
         user_share_account,
     ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 1_000);
     initialize_instant_settlement_with_user_limits(
@@ -1072,7 +1188,7 @@ fn test_instant_redeem_user_limit_resets() {
         &payer,
         &authority,
         vault_pubkey,
-        0,
+        1,
         0,
         60,
     );
@@ -1104,6 +1220,7 @@ fn test_instant_redeem_user_limit_resets() {
         reserve_pubkey,
         user_asset_account,
         user_share_account,
+        fee_recipient_ata,
         50,
     )
     .expect("first instant redeem should fit user limit");
@@ -1124,6 +1241,7 @@ fn test_instant_redeem_user_limit_resets() {
         reserve_pubkey,
         user_asset_account,
         user_share_account,
+        fee_recipient_ata,
         11,
     )
     .unwrap_err();
@@ -1154,6 +1272,7 @@ fn test_instant_redeem_user_limit_resets() {
         reserve_pubkey,
         user_asset_account,
         user_share_account,
+        fee_recipient_ata,
         11,
     )
     .expect("instant redeem should succeed after user window resets");
@@ -1221,7 +1340,7 @@ fn test_instant_deposit_succeeds_for_primary_asset() {
         _fee_recipient_ata,
         user_share_account,
     ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 100);
-    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 0);
+    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 1);
     initialize_vault_and_nav(&mut svm, &authority, share_mint.pubkey(), vault_pubkey);
 
     let user_assets_before = get_token_account_amount(
@@ -1293,7 +1412,7 @@ fn test_instant_deposit_rejects_reenabled_token_2022_transfer_fee() {
         _fee_recipient_ata,
         user_share_account,
     ) = set_up_async_vault_v2(&mut svm, token_2022::ID, Some(0), token::ID, 100);
-    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 0);
+    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 1);
     initialize_vault_and_nav(&mut svm, &authority, share_mint.pubkey(), vault_pubkey);
 
     let user_asset_account = token_account(user.pubkey(), asset_mint.pubkey(), token_2022::ID);
@@ -1527,6 +1646,122 @@ fn test_instant_redeem_protocol_fee_splits_total_instant_fees() {
 }
 
 #[test]
+fn test_instant_redeem_protocol_fee_uses_program_config_recipient_when_supplied() {
+    let mut svm = LiteSVM::new();
+    add_program(&mut svm);
+
+    let (
+        authority,
+        payer,
+        _mint_authority,
+        asset_mint,
+        share_mint,
+        user,
+        _operator,
+        _fee_recipient,
+        reserve_pubkey,
+        vault_pubkey,
+        _pending_vault_pubkey,
+        fee_recipient_ata,
+        user_share_account,
+    ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 100);
+    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 1_000);
+    initialize_vault_and_nav(&mut svm, &authority, share_mint.pubkey(), vault_pubkey);
+
+    let vault_protocol_fee_recipient = Keypair::new();
+    let configured_protocol_fee_recipient = Keypair::new();
+    svm.airdrop(&vault_protocol_fee_recipient.pubkey(), 1_000_000_000)
+        .unwrap();
+    svm.airdrop(&configured_protocol_fee_recipient.pubkey(), 1_000_000_000)
+        .unwrap();
+    let vault_protocol_fee_recipient_ata = create_ata(
+        &mut svm,
+        &vault_protocol_fee_recipient,
+        &asset_mint.pubkey(),
+        &token::ID,
+    );
+    let configured_protocol_fee_recipient_ata = create_ata(
+        &mut svm,
+        &configured_protocol_fee_recipient,
+        &asset_mint.pubkey(),
+        &token::ID,
+    );
+    UpdateVaultBuilder::new()
+        .authority(authority.pubkey())
+        .share_mint(share_mint.pubkey())
+        .vault(vault_pubkey)
+        .protocol_fee_bps(2_500)
+        .protocol_fee_recipient(vault_protocol_fee_recipient.pubkey())
+        .instruction()
+        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
+        .expect("protocol fee config should succeed");
+
+    let protocol_fee_config = protocol_fee_config_address();
+    InitializeProtocolFeeConfigBuilder::new()
+        .payer(authority.pubkey())
+        .authority(authority.pubkey())
+        .protocol_fee_config(protocol_fee_config)
+        .protocol_fee_recipient(configured_protocol_fee_recipient.pubkey())
+        .instruction()
+        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
+        .expect("initialize protocol fee config should succeed");
+
+    svm.expire_blockhash();
+    InstantDepositBuilder::new()
+        .user(user.pubkey())
+        .asset_mint(asset_mint.pubkey())
+        .share_mint(share_mint.pubkey())
+        .vault(vault_pubkey)
+        .instant_user(Some(instant_user_address(vault_pubkey, user.pubkey())))
+        .vault_token_account(reserve_pubkey)
+        .user_asset_account(user_asset_account(user.pubkey(), asset_mint.pubkey()))
+        .user_share_account(user_share_account)
+        .fee_recipient_token_account(None)
+        .asset_token_program(token::ID)
+        .share_token_program(token::ID)
+        .amount(100)
+        .instruction()
+        .send_transaction(&mut svm, &user.pubkey(), &[&user])
+        .expect("instant deposit should succeed");
+
+    svm.expire_blockhash();
+    InstantRedeemBuilder::new()
+        .user(user.pubkey())
+        .asset_mint(asset_mint.pubkey())
+        .share_mint(share_mint.pubkey())
+        .vault(vault_pubkey)
+        .instant_user(Some(instant_user_address(vault_pubkey, user.pubkey())))
+        .vault_token_account(reserve_pubkey)
+        .user_share_account(user_share_account)
+        .user_asset_account(user_asset_account(user.pubkey(), asset_mint.pubkey()))
+        .fee_recipient_token_account(Some(fee_recipient_ata))
+        .protocol_fee_recipient_token_account(Some(configured_protocol_fee_recipient_ata))
+        .asset_token_program(token::ID)
+        .share_token_program(token::ID)
+        .shares(40)
+        .add_remaining_account(AccountMeta::new_readonly(protocol_fee_config, false))
+        .instruction()
+        .send_transaction(&mut svm, &user.pubkey(), &[&user])
+        .expect("instant redeem should use program-level protocol fee recipient");
+
+    assert_eq!(
+        get_token_account_amount(&svm.get_account(&fee_recipient_ata).unwrap()),
+        3
+    );
+    assert_eq!(
+        get_token_account_amount(
+            &svm.get_account(&configured_protocol_fee_recipient_ata)
+                .unwrap()
+        ),
+        1
+    );
+    assert_eq!(
+        get_token_account_amount(&svm.get_account(&vault_protocol_fee_recipient_ata).unwrap()),
+        0
+    );
+}
+
+#[test]
 fn test_instant_redeem_rejects_reenabled_token_2022_transfer_fee() {
     let mut svm = LiteSVM::new();
     add_program(&mut svm);
@@ -1546,7 +1781,7 @@ fn test_instant_redeem_rejects_reenabled_token_2022_transfer_fee() {
         _fee_recipient_ata,
         user_share_account,
     ) = set_up_async_vault_v2(&mut svm, token_2022::ID, Some(0), token::ID, 100);
-    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 0);
+    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 1);
     initialize_vault_and_nav(&mut svm, &authority, share_mint.pubkey(), vault_pubkey);
 
     let user_asset_account = token_account(user.pubkey(), asset_mint.pubkey(), token_2022::ID);
@@ -1635,7 +1870,7 @@ fn test_instant_settlement_rejects_non_reserve_token_account() {
         _fee_recipient_ata,
         user_share_account,
     ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 100);
-    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 0);
+    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 1);
     initialize_vault_and_nav(&mut svm, &authority, share_mint.pubkey(), vault_pubkey);
 
     svm.expire_blockhash();
@@ -1698,7 +1933,7 @@ fn test_instant_settlement_rejects_stale_nav_and_insufficient_liquidity() {
         _fee_recipient_ata,
         user_share_account,
     ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 100);
-    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 0);
+    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 1);
     InitializeVaultBuilder::new()
         .share_mint(share_mint.pubkey())
         .authority(authority.pubkey())
@@ -1750,10 +1985,10 @@ fn test_instant_settlement_rejects_stale_nav_and_insufficient_liquidity() {
         .authority(authority.pubkey())
         .share_mint(share_mint.pubkey())
         .vault(vault_pubkey)
-        .max_nav_staleness_slots(0)
+        .max_nav_staleness_slots(DEFAULT_INSTANT_NAV_STALENESS_SLOTS)
         .instruction()
         .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
-        .expect("disable staleness config should succeed");
+        .expect("restore staleness config should succeed");
     set_share_balance(&mut svm, &user_share_account, &share_mint.pubkey(), 10);
     svm.expire_blockhash();
     let liquidity_err = InstantRedeemBuilder::new()
@@ -1795,7 +2030,7 @@ fn test_instant_deposit_rejects_tranche_enabled_vault() {
         _fee_recipient_ata,
         user_share_account,
     ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 100);
-    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 0);
+    initialize_instant_settlement(&mut svm, &payer, &authority, vault_pubkey, 1);
 
     let junior_share_mint = Keypair::new();
     create_mint(&mut svm, &mint_authority, &junior_share_mint, &token::ID);

@@ -93,6 +93,10 @@ pub fn handler(ctx: Context<InitializeTranches>, args: InitializeTranchesArgs) -
         ctx.accounts.vault.tranche_config.is_none(),
         AsyncVaultError::ExtensionAlreadyInitialized
     );
+    require!(
+        ctx.accounts.vault.performance_fee_bps == 0,
+        AsyncVaultError::UnsupportedPhaseConfig
+    );
 
     require!(
         args.senior_target_bps <= vault_common::MAX_BPS

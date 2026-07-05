@@ -1,18 +1,17 @@
 use async_vault_v2_client::{
-    lite::SendTransaction, sdk::program_id, AddVaultAssetBuilder, ApproveRequestBuilder,
-    ApproveVaultVenueBuilder, CreateDepositRequestBuilder, CreateVenuePositionBuilder,
-    DeployVenuePositionBuilder, InitializeVaultBuilder, Position, PullVenuePositionBuilder,
-    RegisterVenueBuilder, RemoveVaultVenueBuilder, RemoveVenuePositionBuilder, RequestArgs,
-    SetVenueEntryPausedBuilder, UpdateVaultBuilder, UpdateVaultNavBuilder, Vault, VaultAsset,
-    VaultVenue, VenueEntry, VenueType,
+    lite::SendTransaction, sdk::program_id, AddVaultAssetBuilder, ApproveVaultVenueBuilder,
+    CreateVenuePositionBuilder, DeployVenuePositionBuilder, InitializeVaultBuilder, Position,
+    PullVenuePositionBuilder, RegisterVenueBuilder, RemoveVaultVenueBuilder,
+    RemoveVenuePositionBuilder, SetVenueEntryPausedBuilder, UpdateVaultBuilder,
+    UpdateVaultNavBuilder, Vault, VaultAsset, VaultVenue, VenueEntry, VenueType,
 };
 use litesvm::LiteSVM;
 use solana_sdk::{account::ReadableAccount, pubkey::Pubkey, signature::Keypair, signer::Signer};
 
 use crate::{
     async_helper_functions::{
-        approve_request_args, assert_error_code, create_ata, create_mint, get_token_account_amount,
-        helper_mint_to, set_up_async_vault_v2,
+        assert_error_code, create_mint, get_token_account_amount, helper_mint_to,
+        set_up_async_vault_v2,
     },
     async_vault_v2::constants::{
         INVALID_ASSET_MINT, INVALID_VENUE_DISCRIMINATOR_COUNT, POSITION_BALANCE_NON_ZERO,
@@ -161,6 +160,7 @@ fn approve_vault_venue(
         .vault(vault)
         .venue_entry(venue_entry)
         .vault_venue(vault_venue)
+        .recipient_authority(authority.pubkey())
         .instruction()
         .send_transaction(svm, &payer.pubkey(), &[payer, authority])
 }
@@ -324,6 +324,21 @@ fn read_vault_asset(svm: &LiteSVM, vault_asset: Pubkey) -> VaultAsset {
     VaultAsset::from_bytes(account.data()).unwrap()
 }
 
+fn write_vault_asset(svm: &mut LiteSVM, vault_asset_pubkey: Pubkey, vault_asset: &VaultAsset) {
+    let mut account = svm
+        .get_account(&vault_asset_pubkey)
+        .expect("vault asset should exist");
+    account.data = borsh::to_vec(vault_asset).expect("vault asset should serialize");
+    svm.set_account(vault_asset_pubkey, account)
+        .expect("vault asset account update should succeed");
+}
+
+fn fund_secondary_asset_ledger(svm: &mut LiteSVM, vault_asset_pubkey: Pubkey, idle_balance: u64) {
+    let mut vault_asset = read_vault_asset(svm, vault_asset_pubkey);
+    vault_asset.idle_balance = idle_balance;
+    write_vault_asset(svm, vault_asset_pubkey, &vault_asset);
+}
+
 fn initialize_and_set_nav(
     svm: &mut LiteSVM,
     authority: &Keypair,
@@ -352,25 +367,16 @@ fn add_and_fund_secondary_asset(
     payer: &Keypair,
     authority: &Keypair,
     mint_authority: &Keypair,
-    depositor: &Keypair,
-    share_mint: Pubkey,
+    _depositor: &Keypair,
+    _share_mint: Pubkey,
     vault: Pubkey,
     amount: u64,
     deposit_cap: u64,
 ) -> SecondaryAssetAccounts {
     let asset_mint = Keypair::new();
     create_mint(svm, mint_authority, &asset_mint, &spl_token::ID);
-    let user_asset_account = create_ata(svm, depositor, &asset_mint.pubkey(), &spl_token::ID);
-    helper_mint_to(
-        svm,
-        &asset_mint.pubkey(),
-        &user_asset_account,
-        mint_authority,
-        amount,
-        &spl_token::ID,
-    );
 
-    let (vault_asset, reserve, pending_vault) = derive_asset_accounts(vault, asset_mint.pubkey());
+    let (vault_asset, reserve, _pending_vault) = derive_asset_accounts(vault, asset_mint.pubkey());
     add_vault_asset(
         svm,
         payer,
@@ -381,45 +387,15 @@ fn add_and_fund_secondary_asset(
     )
     .expect("add secondary asset should succeed");
 
-    let request_keypair = Keypair::new();
-    CreateDepositRequestBuilder::new()
-        .user(depositor.pubkey())
-        .asset_mint(asset_mint.pubkey())
-        .share_mint(share_mint)
-        .vault(vault)
-        .vault_asset(Some(vault_asset))
-        .request(request_keypair.pubkey())
-        .user_token_account(user_asset_account)
-        .pending_vault(pending_vault)
-        .asset_token_program(spl_token::ID)
-        .args(RequestArgs {
-            amount,
-            operator: None,
-        })
-        .instruction()
-        .send_transaction(svm, &depositor.pubkey(), &[depositor, &request_keypair])
-        .expect("secondary deposit request should succeed");
-
-    let (owner, request_type, request_amount, created_at, nav_update_version) =
-        approve_request_args(svm, &request_keypair.pubkey());
-    ApproveRequestBuilder::new()
-        .authority(authority.pubkey())
-        .asset_mint(asset_mint.pubkey())
-        .share_mint(share_mint)
-        .vault(vault)
-        .vault_asset(Some(vault_asset))
-        .request(request_keypair.pubkey())
-        .owner(owner)
-        .request_type(request_type)
-        .amount(request_amount)
-        .created_at(created_at)
-        .nav_update_version(nav_update_version)
-        .vault_token_account(reserve)
-        .pending_vault(pending_vault)
-        .asset_token_program(spl_token::ID)
-        .instruction()
-        .send_transaction(svm, &authority.pubkey(), &[authority])
-        .expect("approve secondary deposit should succeed");
+    helper_mint_to(
+        svm,
+        &asset_mint.pubkey(),
+        &reserve,
+        mint_authority,
+        amount,
+        &spl_token::ID,
+    );
+    fund_secondary_asset_ledger(svm, vault_asset, amount);
 
     SecondaryAssetAccounts {
         asset_mint: asset_mint.pubkey(),
@@ -545,6 +521,7 @@ fn test_curator_can_approve_and_remove_vault_venue() {
     let vault_venue = read_vault_venue(&svm, vault_venue_pubkey);
     assert_eq!(vault_venue.vault, vault_pubkey);
     assert_eq!(vault_venue.venue_entry, venue_entry);
+    assert_eq!(vault_venue.recipient_authority, authority.pubkey());
     assert_eq!(vault_venue.target_program, spl_token::ID);
     assert!(vault_venue.routine_safe);
     assert!(!vault_venue.paused);
@@ -720,18 +697,7 @@ fn test_manager_deploys_and_pulls_secondary_position_updates_asset_ledger() {
 
     let asset_mint = Keypair::new();
     create_mint(&mut svm, &mint_authority, &asset_mint, &spl_token::ID);
-    let user_asset_account =
-        create_ata(&mut svm, &hot_manager, &asset_mint.pubkey(), &spl_token::ID);
-    helper_mint_to(
-        &mut svm,
-        &asset_mint.pubkey(),
-        &user_asset_account,
-        &mint_authority,
-        1_000,
-        &spl_token::ID,
-    );
-
-    let (vault_asset_pubkey, reserve_pubkey, pending_vault_pubkey) =
+    let (vault_asset_pubkey, reserve_pubkey, _pending_vault_pubkey) =
         derive_asset_accounts(vault_pubkey, asset_mint.pubkey());
     add_vault_asset(
         &mut svm,
@@ -743,49 +709,15 @@ fn test_manager_deploys_and_pulls_secondary_position_updates_asset_ledger() {
     )
     .expect("add secondary asset should succeed");
 
-    let request_keypair = Keypair::new();
-    CreateDepositRequestBuilder::new()
-        .user(hot_manager.pubkey())
-        .asset_mint(asset_mint.pubkey())
-        .share_mint(share_mint.pubkey())
-        .vault(vault_pubkey)
-        .vault_asset(Some(vault_asset_pubkey))
-        .request(request_keypair.pubkey())
-        .user_token_account(user_asset_account)
-        .pending_vault(pending_vault_pubkey)
-        .asset_token_program(spl_token::ID)
-        .args(RequestArgs {
-            amount: 1_000,
-            operator: None,
-        })
-        .instruction()
-        .send_transaction(
-            &mut svm,
-            &hot_manager.pubkey(),
-            &[&hot_manager, &request_keypair],
-        )
-        .expect("secondary deposit request should succeed");
-
-    let (owner, request_type, amount, created_at, nav_update_version) =
-        approve_request_args(&svm, &request_keypair.pubkey());
-    ApproveRequestBuilder::new()
-        .authority(authority.pubkey())
-        .asset_mint(asset_mint.pubkey())
-        .share_mint(share_mint.pubkey())
-        .vault(vault_pubkey)
-        .vault_asset(Some(vault_asset_pubkey))
-        .request(request_keypair.pubkey())
-        .owner(owner)
-        .request_type(request_type)
-        .amount(amount)
-        .created_at(created_at)
-        .nav_update_version(nav_update_version)
-        .vault_token_account(reserve_pubkey)
-        .pending_vault(pending_vault_pubkey)
-        .asset_token_program(spl_token::ID)
-        .instruction()
-        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
-        .expect("approve secondary deposit should succeed");
+    helper_mint_to(
+        &mut svm,
+        &asset_mint.pubkey(),
+        &reserve_pubkey,
+        &mint_authority,
+        1_000,
+        &spl_token::ID,
+    );
+    fund_secondary_asset_ledger(&mut svm, vault_asset_pubkey, 1_000);
 
     let funded_asset = read_vault_asset(&svm, vault_asset_pubkey);
     assert_eq!(funded_asset.idle_balance, 1_000);

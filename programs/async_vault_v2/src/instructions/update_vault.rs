@@ -139,6 +139,13 @@ fn validate_update_args_supported(vault: &Vault, args: &UpdateVaultArgs) -> Resu
             AsyncVaultError::UnsupportedPhaseConfig
         );
     }
+    let performance_fee_bps = args
+        .performance_fee_bps
+        .unwrap_or(vault.performance_fee_bps);
+    require!(
+        vault.tranche_config.is_none() || performance_fee_bps == 0,
+        AsyncVaultError::UnsupportedPhaseConfig
+    );
     let rolling_limit_window_slots = args
         .rolling_limit_window_slots
         .unwrap_or(vault.rolling_limit_window_slots);

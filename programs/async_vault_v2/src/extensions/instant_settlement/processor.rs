@@ -42,6 +42,17 @@ pub fn assert_instant_settlement_enabled(vault_info: &AccountInfo) -> Result<Ins
     Ok(ext)
 }
 
+pub fn assert_instant_settlement_safety_guards(
+    instant_redemption_fee_bps: u16,
+    max_nav_staleness_slots: u64,
+) -> Result<()> {
+    require!(
+        instant_redemption_fee_bps > 0 && max_nav_staleness_slots > 0,
+        AsyncVaultError::InvalidInstantSettlementThresholdConfig
+    );
+    Ok(())
+}
+
 pub fn validate_instant_settlement_thresholds(
     min_deposit_amount: u64,
     max_deposit_amount: u64,

@@ -56,7 +56,8 @@ Implemented timelock field:
 Implemented fee fields:
 
 - `performance_fee_bps`: single-tranche performance fee charged in newly minted
-  shares on NAV updates above the high-water mark.
+  shares on NAV updates above the high-water mark. Rejected when
+  `tranche_config` is set.
 - `performance_fee_crystallization_interval_seconds`: minimum elapsed seconds
   between performance-fee crystallizations. Zero preserves immediate
   crystallization on each new high-water mark.
@@ -65,7 +66,8 @@ Implemented fee fields:
   performance fees before the remaining fee is paid to `fee_recipient`.
 - `protocol_fee_recipient`: owner required for protocol-fee token accounts.
   Initialized to `fee_recipient` and mutable through the vault config update
-  path.
+  path. Fee-paying instructions use this as the fallback recipient when no
+  `ProtocolFeeConfig` PDA is supplied.
 - `instant_redemption_fee_bps`: charged in assets on primary instant redeems
   when the `InstantSettlement` TLV extension is enabled.
 - `tranche_config`: optional `TrancheConfig` PDA. When set, `update_vault_nav`
@@ -74,6 +76,34 @@ Implemented fee fields:
   tracking fields updated by `update_vault_nav`.
 - `approved_asset_count`: number of approved assets, including the primary
   `asset_mint`.
+
+## Protocol Fee Config
+
+- Account type: `ProtocolFeeConfig`
+- Seeds: `[PROTOCOL_FEE_CONFIG_SEED]`
+- Bump field: `protocol_fee_config.bump`
+- Owner: `async_vault_v2`
+- Purpose: singleton program-level protocol fee recipient routing.
+
+Fields:
+
+- `authority`: signer allowed to update the config recipient.
+- `protocol_fee_recipient`: owner required for protocol-fee token accounts when
+  this PDA is supplied.
+
+Implemented instructions:
+
+- `initialize_protocol_fee_config`: creates the singleton PDA with a non-default
+  recipient.
+- `update_protocol_fee_config`: requires the stored `authority` signer and a
+  non-default replacement recipient.
+
+Fee-paying instructions preserve the vault-level fallback by default. When a
+protocol fee is owed, callers may place the singleton PDA immediately before the
+protocol-fee token account in `remaining_accounts`; approval, instant redeem,
+instant deposit, and performance-fee minting then validate the protocol-fee
+token account against `ProtocolFeeConfig.protocol_fee_recipient` instead of
+`Vault.protocol_fee_recipient`.
 
 ## Instant Settlement Extension
 
@@ -157,9 +187,10 @@ Important fields:
   `[ASSET_PENDING_SEED, vault, asset_mint]`.
 - `idle_balance`, `deployed_balance`, `pending_deposit_amount`: per-asset
   accounting fields. Secondary deposits update `pending_deposit_amount` at
-  request creation and `idle_balance` at approval; secondary redemptions
-  decrement `idle_balance` at approval and use the per-asset pending vault until
-  claim; constrained secondary venue deploy/pull moves balances between idle and
+  request creation and unwind through cancel/reject. Secondary redemption
+  requests can unwind through cancel/reject and restore burned shares.
+  Secondary approval is disabled until per-asset pricing exists; constrained
+  secondary venue deploy/pull moves pre-funded balances between idle and
   deployed after exact token-account delta verification.
 - `deposit_cap`: per-asset deposit cap for secondary deposit requests. Zero
   disables the cap.
@@ -177,10 +208,10 @@ Implemented instructions:
   requires all stored and token-account balances to be zero, closes the asset
   token accounts, and closes the `VaultAsset` account.
 - Secondary async lifecycle: `create_deposit_request`, `create_redeem_request`,
-  `approve_request`, `cancel_request`, `reject_request`, queued cancellation,
-  and `claim` validate `Request.asset_mint_address`; approved secondary asset
-  deposits and redemptions update the matching `VaultAsset` ledger and
-  reserve/pending token accounts.
+  `cancel_request`, `reject_request`, and queued cancellation validate
+  `Request.asset_mint_address`; `approve_request` validates the matching
+  `VaultAsset` accounts and then rejects secondary assets until per-asset
+  pricing is implemented.
 - Secondary position lifecycle: `create_venue_position`,
   `deploy_venue_position`, `pull_venue_position`, and `remove_venue_position`
   validate the matching `VaultAsset` PDA and canonical reserve account before
@@ -223,6 +254,8 @@ Implemented instructions:
 Important fields:
 
 - `vault`, `venue_entry`: approval identity.
+- `recipient_authority`: token-account owner approved to receive
+  `withdraw_assets` transfers for this vault/venue approval.
 - `target_program`, `routine_safe`: copied from `VenueEntry` at approval time.
 - `position_count`: number of active positions for this venue approval; must be
   zero before removal.
@@ -231,7 +264,8 @@ Important fields:
 Implemented instructions:
 
 - `approve_vault_venue`: curator-only, blocked when the vault timelock is active
-  until a queued venue-approval flow exists, and rejects paused venue entries.
+  until a queued venue-approval flow exists, rejects paused venue entries, and
+  stores a non-default recipient authority for externally managed withdrawals.
 - `remove_vault_venue`: curator-only, blocked when timelock is active, and
   closes only zero-position approvals.
 
@@ -308,10 +342,11 @@ Important fields:
 Implemented instructions:
 
 - `initialize_tranches`: curator-only, callable only before `initialize_vault`,
-  validates bps bounds, requires zero-supply tranche share mints, rejects asset
-  mints as tranche share mints, requires one tranche mint to equal
-  `Vault.share_mint`, validates share-mint extensions, ensures both tranche
-  mints are vault-owned, and stores `Vault.tranche_config`.
+  validates bps bounds, rejects vaults with `performance_fee_bps > 0`, requires
+  zero-supply tranche share mints, rejects asset mints as tranche share mints,
+  requires one tranche mint to equal `Vault.share_mint`, validates share-mint
+  extensions, ensures both tranche mints are vault-owned, and stores
+  `Vault.tranche_config`.
 - `update_vault_nav`: when `Vault.tranche_config` is set, requires remaining
   accounts `[TrancheConfig, senior_share_mint, junior_share_mint]` after any
   performance-fee accounts. It initializes tranche NAVs on the first waterfall
@@ -350,7 +385,8 @@ Important fields:
 - `nav_update_version`: NAV version at request creation; V2 approval can require
   a newer `vault.nav_version`.
 - `request_state`: `Pending`, `Claimable`, `Cancelled`, or `Rejected`.
-- `operator`: optional delegated claimant/canceler.
+- `operator`: optional delegated claimant. Pending cancellation remains
+  owner-only.
 
 ## Pending Vault Update
 
@@ -414,16 +450,19 @@ Implemented extensions:
 - Subscription and redemption FIFO queues.
 - Externally managed withdrawals. This is a creation-time opt-in gate for
   `withdraw_assets`; the instruction also requires an active `VenueEntry` and
-  matching active `VaultVenue`. Without the TLV extension or active venue
-  approval, free-form reserve withdrawals are rejected.
+  matching active `VaultVenue`, and the recipient token account must be owned by
+  `VaultVenue.recipient_authority`. Without the TLV extension, active venue
+  approval, or approved recipient owner, reserve withdrawals are rejected.
 - Instant settlement. This is a creation-time opt-in gate for primary-asset,
-  non-tranche `instant_deposit` and `instant_redeem`, with optional
-  per-transaction thresholds and per-user rolling limits.
+  non-tranche `instant_deposit` and `instant_redeem`. Initialization and
+  execution require nonzero `max_nav_staleness_slots` and nonzero
+  `instant_redemption_fee_bps`, with optional per-transaction thresholds and
+  per-user rolling limits.
 
 ## Not Yet Present
 
 The following planned accounts do not exist yet: oracle adapter accounts,
 arbitrary venue execution/account template accounts, vault-in-vault
-cycle-prevention accounts, program-wide protocol-fee config accounts, and
-tranche-aware or secondary-asset instant-settlement accounts. Vault-level
-protocol-fee recipient configuration is stored directly on `Vault`.
+cycle-prevention accounts, tranche-aware or secondary-asset instant-settlement
+accounts, and richer protocol-fee governance accounts for global bps overrides
+or authority transfer.

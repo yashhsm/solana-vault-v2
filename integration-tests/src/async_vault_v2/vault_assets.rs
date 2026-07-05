@@ -1,7 +1,7 @@
 use anchor_spl::token;
 use async_vault_v2_client::{
     lite::SendTransaction, sdk::program_id, AddVaultAssetBuilder, ApproveRequestBuilder,
-    CancelRequestBuilder, ClaimBuilder, CreateDepositRequestBuilder, CreateRedeemRequestBuilder,
+    CancelRequestBuilder, CreateDepositRequestBuilder, CreateRedeemRequestBuilder,
     InitializeVaultBuilder, RejectRequestBuilder, RemoveVaultAssetBuilder, RequestArgs,
     UpdateVaultBuilder, UpdateVaultNavBuilder, Vault, VaultAsset,
 };
@@ -15,8 +15,8 @@ use crate::{
     },
     async_vault_v2::constants::{
         ASSET_ALREADY_APPROVED, ASSET_BALANCE_NON_ZERO, DEPOSIT_CAP_EXCEEDED, INVALID_ASSET_MINT,
-        INVALID_PENDING_VAULT, MAX_APPROVED_ASSETS_EXCEEDED, TIMELOCK_REQUIRED,
-        UNAUTHORIZED_SIGNER,
+        MAX_APPROVED_ASSETS_EXCEEDED, TIMELOCK_REQUIRED, UNAUTHORIZED_SIGNER,
+        UNSUPPORTED_PHASE_CONFIG,
     },
 };
 
@@ -189,7 +189,7 @@ fn test_add_vault_asset_initializes_accounts() {
 }
 
 #[test]
-fn test_secondary_asset_deposit_approve_and_claim_updates_asset_ledger() {
+fn test_secondary_asset_deposit_approval_is_disabled_until_pricing() {
     let mut svm = LiteSVM::new();
     load_program(&mut svm);
     let (
@@ -262,7 +262,7 @@ fn test_secondary_asset_deposit_approve_and_claim_updates_asset_ledger() {
 
     let (owner, request_type, amount, created_at, nav_update_version) =
         approve_request_args(&svm, &request_keypair.pubkey());
-    ApproveRequestBuilder::new()
+    let err = ApproveRequestBuilder::new()
         .authority(authority.pubkey())
         .asset_mint(asset_mint.pubkey())
         .share_mint(share_mint.pubkey())
@@ -279,39 +279,60 @@ fn test_secondary_asset_deposit_approve_and_claim_updates_asset_ledger() {
         .asset_token_program(token::ID)
         .instruction()
         .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
-        .expect("approve secondary-asset deposit should succeed");
+        .unwrap_err();
+    assert_error_code(&err, UNSUPPORTED_PHASE_CONFIG, "UnsupportedPhaseConfig");
 
-    let asset_after_approve = read_vault_asset(&svm, vault_asset_pubkey);
-    assert_eq!(asset_after_approve.pending_deposit_amount, 0);
-    assert_eq!(asset_after_approve.idle_balance, 400_000);
+    let asset_after_failed_approve = read_vault_asset(&svm, vault_asset_pubkey);
+    assert_eq!(asset_after_failed_approve.pending_deposit_amount, 400_000);
+    assert_eq!(asset_after_failed_approve.idle_balance, 0);
+    assert_eq!(
+        get_token_account_amount(&svm.get_account(&pending_vault_pubkey).unwrap()),
+        400_000
+    );
+    assert_eq!(
+        get_token_account_amount(&svm.get_account(&reserve_pubkey).unwrap()),
+        0
+    );
+
+    RejectRequestBuilder::new()
+        .authority(authority.pubkey())
+        .asset_mint(asset_mint.pubkey())
+        .share_mint(share_mint.pubkey())
+        .vault(vault_pubkey)
+        .vault_asset(Some(vault_asset_pubkey))
+        .request(request_keypair.pubkey())
+        .user(user.pubkey())
+        .owner(owner)
+        .request_type(request_type)
+        .amount(amount)
+        .created_at(created_at)
+        .nav_update_version(nav_update_version)
+        .user_token_account(Some(user_asset_account))
+        .asset_pending_vault(Some(pending_vault_pubkey))
+        .user_share_account(None)
+        .share_token_program(None)
+        .asset_token_program(Some(token::ID))
+        .instruction()
+        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
+        .expect("reject secondary-asset deposit should still refund escrow");
+
+    let asset_after_reject = read_vault_asset(&svm, vault_asset_pubkey);
+    assert_eq!(asset_after_reject.pending_deposit_amount, 0);
+    assert_eq!(
+        get_token_account_amount(&svm.get_account(&user_asset_account).unwrap()),
+        1_000_000
+    );
     assert_eq!(
         get_token_account_amount(&svm.get_account(&pending_vault_pubkey).unwrap()),
         0
     );
     assert_eq!(
-        get_token_account_amount(&svm.get_account(&reserve_pubkey).unwrap()),
-        400_000
-    );
-
-    ClaimBuilder::new()
-        .user(user.pubkey())
-        .owner(user.pubkey())
-        .asset_mint(asset_mint.pubkey())
-        .share_mint(share_mint.pubkey())
-        .vault(vault_pubkey)
-        .request(request_keypair.pubkey())
-        .pending_vault(None)
-        .user_share_account(Some(user_share_account))
-        .user_asset_account(None)
-        .asset_token_program(token::ID)
-        .share_token_program(Some(token::ID))
-        .instruction()
-        .send_transaction(&mut svm, &user.pubkey(), &[&user])
-        .expect("claim secondary-asset deposit shares should succeed");
-
-    assert_eq!(
         get_token_account_amount(&svm.get_account(&user_share_account).unwrap()),
-        400_000
+        0
+    );
+    assert_eq!(
+        get_token_account_amount(&svm.get_account(&reserve_pubkey).unwrap()),
+        0
     );
 }
 
@@ -969,7 +990,7 @@ fn test_add_vault_asset_requires_timelock_queue_when_enabled() {
 }
 
 #[test]
-fn test_secondary_asset_redeem_approve_and_claim_updates_asset_ledger() {
+fn test_secondary_asset_redeem_approval_is_disabled_until_pricing() {
     let mut svm = LiteSVM::new();
     load_program(&mut svm);
     let (
@@ -986,19 +1007,11 @@ fn test_secondary_asset_redeem_approve_and_claim_updates_asset_ledger() {
         _pending_vault_pubkey,
         _fee_recipient_ata,
         user_share_account,
-    ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 500_000);
+    ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 0);
 
     let asset_mint = Keypair::new();
     create_mint(&mut svm, &mint_authority, &asset_mint, &token::ID);
-    let user_asset_account = create_ata(&mut svm, &user, &asset_mint.pubkey(), &token::ID);
-    helper_mint_to(
-        &mut svm,
-        &asset_mint.pubkey(),
-        &user_asset_account,
-        &mint_authority,
-        500_000,
-        &token::ID,
-    );
+    let _user_asset_account = create_ata(&mut svm, &user, &asset_mint.pubkey(), &token::ID);
     let (vault_asset_pubkey, reserve_pubkey, pending_vault_pubkey) =
         derive_asset_accounts(vault_pubkey, asset_mint.pubkey());
     add_vault_asset(
@@ -1011,63 +1024,7 @@ fn test_secondary_asset_redeem_approve_and_claim_updates_asset_ledger() {
     )
     .expect("add_vault_asset should succeed");
     initialize_and_set_nav(&mut svm, &authority, share_mint.pubkey(), vault_pubkey);
-
-    let deposit_request = Keypair::new();
-    CreateDepositRequestBuilder::new()
-        .user(user.pubkey())
-        .asset_mint(asset_mint.pubkey())
-        .share_mint(share_mint.pubkey())
-        .vault(vault_pubkey)
-        .vault_asset(Some(vault_asset_pubkey))
-        .request(deposit_request.pubkey())
-        .user_token_account(user_asset_account)
-        .pending_vault(pending_vault_pubkey)
-        .asset_token_program(token::ID)
-        .args(RequestArgs {
-            amount: 400_000,
-            operator: None,
-        })
-        .instruction()
-        .send_transaction(&mut svm, &user.pubkey(), &[&user, &deposit_request])
-        .expect("secondary-asset deposit request should succeed");
-
-    let (owner, request_type, amount, created_at, nav_update_version) =
-        approve_request_args(&svm, &deposit_request.pubkey());
-    ApproveRequestBuilder::new()
-        .authority(authority.pubkey())
-        .asset_mint(asset_mint.pubkey())
-        .share_mint(share_mint.pubkey())
-        .vault(vault_pubkey)
-        .vault_asset(Some(vault_asset_pubkey))
-        .request(deposit_request.pubkey())
-        .owner(owner)
-        .request_type(request_type)
-        .amount(amount)
-        .created_at(created_at)
-        .nav_update_version(nav_update_version)
-        .vault_token_account(reserve_pubkey)
-        .pending_vault(pending_vault_pubkey)
-        .asset_token_program(token::ID)
-        .instruction()
-        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
-        .expect("approve secondary-asset deposit should succeed");
-
-    ClaimBuilder::new()
-        .user(user.pubkey())
-        .owner(user.pubkey())
-        .asset_mint(asset_mint.pubkey())
-        .share_mint(share_mint.pubkey())
-        .vault(vault_pubkey)
-        .vault_asset(None)
-        .request(deposit_request.pubkey())
-        .pending_vault(None)
-        .user_share_account(Some(user_share_account))
-        .user_asset_account(None)
-        .asset_token_program(token::ID)
-        .share_token_program(Some(token::ID))
-        .instruction()
-        .send_transaction(&mut svm, &user.pubkey(), &[&user])
-        .expect("claim secondary-asset deposit shares should succeed");
+    set_share_balance(&mut svm, &user_share_account, &share_mint.pubkey(), 400_000);
 
     let redeem_request = Keypair::new();
     CreateRedeemRequestBuilder::new()
@@ -1094,7 +1051,7 @@ fn test_secondary_asset_redeem_approve_and_claim_updates_asset_ledger() {
 
     let (owner, request_type, amount, created_at, nav_update_version) =
         approve_request_args(&svm, &redeem_request.pubkey());
-    ApproveRequestBuilder::new()
+    let err = ApproveRequestBuilder::new()
         .authority(authority.pubkey())
         .asset_mint(asset_mint.pubkey())
         .share_mint(share_mint.pubkey())
@@ -1111,64 +1068,46 @@ fn test_secondary_asset_redeem_approve_and_claim_updates_asset_ledger() {
         .asset_token_program(token::ID)
         .instruction()
         .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
-        .expect("approve secondary-asset redeem should succeed");
+        .unwrap_err();
+    assert_error_code(&err, UNSUPPORTED_PHASE_CONFIG, "UnsupportedPhaseConfig");
 
-    let asset_after_approve = read_vault_asset(&svm, vault_asset_pubkey);
-    assert_eq!(asset_after_approve.idle_balance, 250_000);
+    let asset_after_failed_approve = read_vault_asset(&svm, vault_asset_pubkey);
+    assert_eq!(asset_after_failed_approve.idle_balance, 0);
+    assert_eq!(asset_after_failed_approve.deployed_balance, 0);
     assert_eq!(
         get_token_account_amount(&svm.get_account(&reserve_pubkey).unwrap()),
-        250_000
-    );
-    assert_eq!(
-        get_token_account_amount(&svm.get_account(&pending_vault_pubkey).unwrap()),
-        150_000
-    );
-
-    let wrong_pending_claim = ClaimBuilder::new()
-        .user(user.pubkey())
-        .owner(user.pubkey())
-        .asset_mint(asset_mint.pubkey())
-        .share_mint(share_mint.pubkey())
-        .vault(vault_pubkey)
-        .vault_asset(Some(vault_asset_pubkey))
-        .request(redeem_request.pubkey())
-        .pending_vault(Some(reserve_pubkey))
-        .user_share_account(None)
-        .user_asset_account(Some(user_asset_account))
-        .asset_token_program(token::ID)
-        .share_token_program(None)
-        .instruction()
-        .send_transaction(&mut svm, &user.pubkey(), &[&user]);
-    assert_error_code(
-        &wrong_pending_claim.unwrap_err(),
-        INVALID_PENDING_VAULT,
-        "InvalidPendingVault",
-    );
-
-    ClaimBuilder::new()
-        .user(user.pubkey())
-        .owner(user.pubkey())
-        .asset_mint(asset_mint.pubkey())
-        .share_mint(share_mint.pubkey())
-        .vault(vault_pubkey)
-        .vault_asset(Some(vault_asset_pubkey))
-        .request(redeem_request.pubkey())
-        .pending_vault(Some(pending_vault_pubkey))
-        .user_share_account(None)
-        .user_asset_account(Some(user_asset_account))
-        .asset_token_program(token::ID)
-        .share_token_program(None)
-        .instruction()
-        .send_transaction(&mut svm, &user.pubkey(), &[&user])
-        .expect("claim secondary-asset redeem should succeed");
-
-    assert_eq!(
-        get_token_account_amount(&svm.get_account(&user_asset_account).unwrap()),
-        250_000
+        0
     );
     assert_eq!(
         get_token_account_amount(&svm.get_account(&pending_vault_pubkey).unwrap()),
         0
+    );
+
+    RejectRequestBuilder::new()
+        .authority(authority.pubkey())
+        .asset_mint(asset_mint.pubkey())
+        .share_mint(share_mint.pubkey())
+        .vault(vault_pubkey)
+        .vault_asset(Some(vault_asset_pubkey))
+        .request(redeem_request.pubkey())
+        .user(user.pubkey())
+        .owner(owner)
+        .request_type(request_type)
+        .amount(amount)
+        .created_at(created_at)
+        .nav_update_version(nav_update_version)
+        .user_token_account(None)
+        .asset_pending_vault(None)
+        .user_share_account(Some(user_share_account))
+        .share_token_program(Some(token::ID))
+        .asset_token_program(None)
+        .instruction()
+        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
+        .expect("reject secondary-asset redeem should still restore shares");
+
+    assert_eq!(
+        get_token_account_amount(&svm.get_account(&user_share_account).unwrap()),
+        400_000
     );
 }
 

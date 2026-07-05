@@ -6,7 +6,7 @@ use async_vault_v2_client::{
     ApproveRequestBuilder, CancelQueuedDepositRequestBuilder, ClaimBuilder,
     CreateDepositRequestBuilder, CreateRedeemRequestBuilder, InitializeRedemptionQueueBuilder,
     InitializeSubscriptionQueueBuilder, InitializeTranchesBuilder, InitializeVaultBuilder, Request,
-    RequestArgs, RequestState, TrancheConfig, UpdateVaultNavBuilder, Vault,
+    RequestArgs, RequestState, TrancheConfig, UpdateVaultBuilder, UpdateVaultNavBuilder, Vault,
 };
 use litesvm::LiteSVM;
 use solana_sdk::{
@@ -25,7 +25,7 @@ use crate::{
         JUNIOR_RATIO_BELOW_MINIMUM, MISSING_REQUIRED_ACCOUNT, REDEMPTION_QUEUE_OUT_OF_ORDER,
         SHARE_MINT_SUPPLY_SHOULD_BE_ZERO, SUBSCRIPTION_QUEUE_OUT_OF_ORDER,
         TRANCHE_REQUEST_AMOUNT_ABOVE_MAXIMUM, TRANCHE_REQUEST_AMOUNT_BELOW_MINIMUM,
-        UNAUTHORIZED_SIGNER, VAULT_ALREADY_INITIALIZED,
+        UNAUTHORIZED_SIGNER, UNSUPPORTED_PHASE_CONFIG, VAULT_ALREADY_INITIALIZED,
     },
 };
 
@@ -797,6 +797,128 @@ fn test_initialize_tranches_rejects_non_curator() {
         &result.unwrap_err(),
         UNAUTHORIZED_SIGNER,
         "UnauthorizedSigner",
+    );
+}
+
+#[test]
+fn test_initialize_tranches_rejects_existing_performance_fee() {
+    let mut svm = LiteSVM::new();
+    add_program(&mut svm);
+
+    let (
+        authority,
+        payer,
+        mint_authority,
+        _asset_mint,
+        share_mint,
+        _user,
+        _operator,
+        _fee_recipient,
+        _reserve_pubkey,
+        vault_pubkey,
+        _pending_vault_pubkey,
+        _fee_recipient_ata,
+        _user_share_account,
+    ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 0);
+    let junior_share_mint = Keypair::new();
+    create_mint(&mut svm, &mint_authority, &junior_share_mint, &token::ID);
+
+    UpdateVaultBuilder::new()
+        .authority(authority.pubkey())
+        .share_mint(share_mint.pubkey())
+        .vault(vault_pubkey)
+        .performance_fee_bps(100)
+        .instruction()
+        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
+        .expect("set performance fee should succeed before tranches");
+    svm.expire_blockhash();
+
+    let result = InitializeTranchesBuilder::new()
+        .payer(payer.pubkey())
+        .mint_authority(mint_authority.pubkey())
+        .authority(authority.pubkey())
+        .vault(vault_pubkey)
+        .senior_share_mint(share_mint.pubkey())
+        .junior_share_mint(junior_share_mint.pubkey())
+        .tranche_config(tranche_config_address(vault_pubkey))
+        .senior_share_token_program(token::ID)
+        .junior_share_token_program(token::ID)
+        .senior_target_bps(700)
+        .min_junior_ratio_bps(2_500)
+        .min_request_amounts(NO_TRANCHE_REQUEST_LIMITS)
+        .max_request_amounts(NO_TRANCHE_REQUEST_LIMITS)
+        .instruction()
+        .send_transaction(
+            &mut svm,
+            &payer.pubkey(),
+            &[&payer, &mint_authority, &authority],
+        );
+
+    assert_error_code(
+        &result.unwrap_err(),
+        UNSUPPORTED_PHASE_CONFIG,
+        "UnsupportedPhaseConfig",
+    );
+}
+
+#[test]
+fn test_update_vault_rejects_performance_fee_after_tranches() {
+    let mut svm = LiteSVM::new();
+    add_program(&mut svm);
+
+    let (
+        authority,
+        payer,
+        mint_authority,
+        _asset_mint,
+        share_mint,
+        _user,
+        _operator,
+        _fee_recipient,
+        _reserve_pubkey,
+        vault_pubkey,
+        _pending_vault_pubkey,
+        _fee_recipient_ata,
+        _user_share_account,
+    ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 0);
+    let junior_share_mint = Keypair::new();
+    create_mint(&mut svm, &mint_authority, &junior_share_mint, &token::ID);
+
+    InitializeTranchesBuilder::new()
+        .payer(payer.pubkey())
+        .mint_authority(mint_authority.pubkey())
+        .authority(authority.pubkey())
+        .vault(vault_pubkey)
+        .senior_share_mint(share_mint.pubkey())
+        .junior_share_mint(junior_share_mint.pubkey())
+        .tranche_config(tranche_config_address(vault_pubkey))
+        .senior_share_token_program(token::ID)
+        .junior_share_token_program(token::ID)
+        .senior_target_bps(700)
+        .min_junior_ratio_bps(2_500)
+        .min_request_amounts(NO_TRANCHE_REQUEST_LIMITS)
+        .max_request_amounts(NO_TRANCHE_REQUEST_LIMITS)
+        .instruction()
+        .send_transaction(
+            &mut svm,
+            &payer.pubkey(),
+            &[&payer, &mint_authority, &authority],
+        )
+        .expect("tranche initialization should succeed");
+    svm.expire_blockhash();
+
+    let result = UpdateVaultBuilder::new()
+        .authority(authority.pubkey())
+        .share_mint(share_mint.pubkey())
+        .vault(vault_pubkey)
+        .performance_fee_bps(100)
+        .instruction()
+        .send_transaction(&mut svm, &authority.pubkey(), &[&authority]);
+
+    assert_error_code(
+        &result.unwrap_err(),
+        UNSUPPORTED_PHASE_CONFIG,
+        "UnsupportedPhaseConfig",
     );
 }
 

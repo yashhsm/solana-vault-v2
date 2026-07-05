@@ -5,6 +5,11 @@ use crate::{
     state::{Vault, VaultVenue, VenueEntry, VAULT_VENUE_SEED},
 };
 
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct ApproveVaultVenueArgs {
+    pub recipient_authority: Pubkey,
+}
+
 #[derive(Accounts)]
 pub struct ApproveVaultVenue<'info> {
     #[account(mut)]
@@ -29,9 +34,14 @@ pub struct ApproveVaultVenue<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<ApproveVaultVenue>) -> Result<()> {
+pub fn handler(ctx: Context<ApproveVaultVenue>, args: ApproveVaultVenueArgs) -> Result<()> {
     let vault = &ctx.accounts.vault;
     vault.assert_curator(ctx.accounts.authority.key())?;
+    require_keys_neq!(
+        args.recipient_authority,
+        Pubkey::default(),
+        AsyncVaultError::InvalidVenueRecipient
+    );
     require!(
         vault.timelock_delay_slots == 0,
         AsyncVaultError::TimelockRequired
@@ -41,6 +51,7 @@ pub fn handler(ctx: Context<ApproveVaultVenue>) -> Result<()> {
     ctx.accounts.vault_venue.set_inner(VaultVenue {
         vault: vault.key(),
         venue_entry: ctx.accounts.venue_entry.key(),
+        recipient_authority: args.recipient_authority,
         target_program: ctx.accounts.venue_entry.target_program,
         routine_safe: ctx.accounts.venue_entry.routine_safe,
         paused: false,

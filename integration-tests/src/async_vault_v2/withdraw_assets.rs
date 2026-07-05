@@ -16,8 +16,8 @@ use crate::{
         set_up_async_vault_v2,
     },
     async_vault_v2::constants::{
-        EXTERNALLY_MANAGED_WITHDRAWALS_DISABLED, PAUSED_VAULT, ROLLING_LIMIT_EXCEEDED,
-        UNAUTHORIZED_SIGNER, VENUE_PAUSED,
+        EXTERNALLY_MANAGED_WITHDRAWALS_DISABLED, INVALID_VENUE_RECIPIENT, PAUSED_VAULT,
+        ROLLING_LIMIT_EXCEEDED, UNAUTHORIZED_SIGNER, VENUE_PAUSED,
     },
 };
 
@@ -60,6 +60,7 @@ fn approve_withdraw_venue(
     payer: &Keypair,
     authority: &Keypair,
     vault: Pubkey,
+    recipient_authority: Pubkey,
     byte: u8,
 ) -> (Pubkey, Pubkey) {
     let venue_id = venue_id(byte);
@@ -86,6 +87,7 @@ fn approve_withdraw_venue(
         .vault(vault)
         .venue_entry(venue_entry)
         .vault_venue(vault_venue)
+        .recipient_authority(recipient_authority)
         .instruction()
         .send_transaction(svm, &payer.pubkey(), &[payer, authority])
         .expect("approve withdraw venue should succeed");
@@ -136,8 +138,14 @@ fn test_withdraw_assets_disabled_without_extension() {
         .instruction()
         .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
         .expect("initialize vault should succeed");
-    let (venue_entry, vault_venue) =
-        approve_withdraw_venue(&mut svm, &payer, &authority, vault_pubkey, 1);
+    let (venue_entry, vault_venue) = approve_withdraw_venue(
+        &mut svm,
+        &payer,
+        &authority,
+        vault_pubkey,
+        authority.pubkey(),
+        1,
+    );
 
     helper_mint_to(
         &mut svm,
@@ -148,9 +156,7 @@ fn test_withdraw_assets_disabled_without_extension() {
         &token::ID,
     );
 
-    let recipient = Keypair::new();
-    svm.airdrop(&recipient.pubkey(), 1_000_000_000).unwrap();
-    let recipient_ata = create_ata(&mut svm, &recipient, &asset_mint.pubkey(), &token::ID);
+    let recipient_ata = create_ata(&mut svm, &authority, &asset_mint.pubkey(), &token::ID);
 
     let err = WithdrawAssetsBuilder::new()
         .authority(authority.pubkey())
@@ -214,8 +220,14 @@ fn test_withdraw_assets_success(deposit_amount: u64, withdraw_amount: u64) {
         .instruction()
         .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
         .expect("update nav should succeed");
-    let (venue_entry, vault_venue) =
-        approve_withdraw_venue(&mut svm, &payer, &authority, vault_pubkey, 2);
+    let (venue_entry, vault_venue) = approve_withdraw_venue(
+        &mut svm,
+        &payer,
+        &authority,
+        vault_pubkey,
+        authority.pubkey(),
+        2,
+    );
 
     helper_mint_to(
         &mut svm,
@@ -226,9 +238,7 @@ fn test_withdraw_assets_success(deposit_amount: u64, withdraw_amount: u64) {
         &token::ID,
     );
 
-    let recipient = Keypair::new();
-    svm.airdrop(&recipient.pubkey(), 1_000_000_000).unwrap();
-    let recipient_ata = create_ata(&mut svm, &recipient, &asset_mint.pubkey(), &token::ID);
+    let recipient_ata = create_ata(&mut svm, &authority, &asset_mint.pubkey(), &token::ID);
 
     let reserve_before = get_token_account_amount(&svm.get_account(&reserve_pubkey).unwrap());
     assert_eq!(reserve_before, deposit_amount);
@@ -252,6 +262,83 @@ fn test_withdraw_assets_success(deposit_amount: u64, withdraw_amount: u64) {
 
     let recipient_balance = get_token_account_amount(&svm.get_account(&recipient_ata).unwrap());
     assert_eq!(recipient_balance, withdraw_amount);
+}
+
+#[test]
+fn test_withdraw_assets_rejects_unapproved_recipient_authority() {
+    let mut svm = LiteSVM::new();
+    let program_bytes = include_bytes!("../../../target/deploy/async_vault_v2.so");
+    svm.add_program(program_id(), program_bytes).unwrap();
+
+    let (
+        authority,
+        payer,
+        mint_authority,
+        asset_mint,
+        share_mint,
+        _user,
+        _operator,
+        _fee_recipient,
+        reserve_pubkey,
+        vault_pubkey,
+        _pending_vault_pubkey,
+        _fee_recipient_ata,
+        _user_share_account,
+    ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 10_000_000);
+
+    initialize_externally_managed_withdrawals(&mut svm, &authority, vault_pubkey);
+
+    InitializeAsyncVaultBuilder::new()
+        .share_mint(share_mint.pubkey())
+        .authority(authority.pubkey())
+        .vault(vault_pubkey)
+        .instruction()
+        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
+        .expect("initialize vault should succeed");
+    let approved_recipient = Keypair::new();
+    let (venue_entry, vault_venue) = approve_withdraw_venue(
+        &mut svm,
+        &payer,
+        &authority,
+        vault_pubkey,
+        approved_recipient.pubkey(),
+        8,
+    );
+
+    helper_mint_to(
+        &mut svm,
+        &asset_mint.pubkey(),
+        &reserve_pubkey,
+        &mint_authority,
+        1_000_000,
+        &token::ID,
+    );
+
+    let unapproved_recipient = Keypair::new();
+    svm.airdrop(&unapproved_recipient.pubkey(), 1_000_000_000)
+        .unwrap();
+    let unapproved_recipient_ata = create_ata(
+        &mut svm,
+        &unapproved_recipient,
+        &asset_mint.pubkey(),
+        &token::ID,
+    );
+
+    let err = WithdrawAssetsBuilder::new()
+        .authority(authority.pubkey())
+        .asset_mint(asset_mint.pubkey())
+        .vault(vault_pubkey)
+        .venue_entry(venue_entry)
+        .vault_venue(vault_venue)
+        .vault_token_account(reserve_pubkey)
+        .recipient_token_account(unapproved_recipient_ata)
+        .asset_token_program(token::ID)
+        .amount(500_000)
+        .instruction()
+        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
+        .unwrap_err();
+
+    assert_error_code(&err, INVALID_VENUE_RECIPIENT, "InvalidVenueRecipient");
 }
 
 #[test_case(true, false ; "unauthorized signer")]
@@ -293,8 +380,14 @@ fn test_withdraw_assets_fails(use_wrong_signer: bool, pause_vault: bool) {
         .instruction()
         .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
         .expect("update nav should succeed");
-    let (venue_entry, vault_venue) =
-        approve_withdraw_venue(&mut svm, &payer, &authority, vault_pubkey, 3);
+    let (venue_entry, vault_venue) = approve_withdraw_venue(
+        &mut svm,
+        &payer,
+        &authority,
+        vault_pubkey,
+        authority.pubkey(),
+        3,
+    );
 
     helper_mint_to(
         &mut svm,
@@ -305,9 +398,7 @@ fn test_withdraw_assets_fails(use_wrong_signer: bool, pause_vault: bool) {
         &token::ID,
     );
 
-    let recipient = Keypair::new();
-    svm.airdrop(&recipient.pubkey(), 1_000_000_000).unwrap();
-    let recipient_ata = create_ata(&mut svm, &recipient, &asset_mint.pubkey(), &token::ID);
+    let recipient_ata = create_ata(&mut svm, &authority, &asset_mint.pubkey(), &token::ID);
 
     if pause_vault {
         UpdateVaultAsyncBuilder::new()
@@ -376,8 +467,14 @@ fn test_withdraw_assets_rejects_paused_venue_entry() {
         .instruction()
         .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
         .expect("initialize vault should succeed");
-    let (venue_entry, vault_venue) =
-        approve_withdraw_venue(&mut svm, &payer, &authority, vault_pubkey, 5);
+    let (venue_entry, vault_venue) = approve_withdraw_venue(
+        &mut svm,
+        &payer,
+        &authority,
+        vault_pubkey,
+        authority.pubkey(),
+        5,
+    );
 
     SetVenueEntryPausedBuilder::new()
         .registry_authority(authority.pubkey())
@@ -396,9 +493,7 @@ fn test_withdraw_assets_rejects_paused_venue_entry() {
         &token::ID,
     );
 
-    let recipient = Keypair::new();
-    svm.airdrop(&recipient.pubkey(), 1_000_000_000).unwrap();
-    let recipient_ata = create_ata(&mut svm, &recipient, &asset_mint.pubkey(), &token::ID);
+    let recipient_ata = create_ata(&mut svm, &authority, &asset_mint.pubkey(), &token::ID);
 
     let err = WithdrawAssetsBuilder::new()
         .authority(authority.pubkey())
@@ -449,10 +544,22 @@ fn test_withdraw_assets_rejects_mismatched_vault_venue() {
         .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
         .expect("initialize vault should succeed");
 
-    let (venue_entry_a, vault_venue_a) =
-        approve_withdraw_venue(&mut svm, &payer, &authority, vault_pubkey, 6);
-    let (venue_entry_b, _vault_venue_b) =
-        approve_withdraw_venue(&mut svm, &payer, &authority, vault_pubkey, 7);
+    let (venue_entry_a, vault_venue_a) = approve_withdraw_venue(
+        &mut svm,
+        &payer,
+        &authority,
+        vault_pubkey,
+        authority.pubkey(),
+        6,
+    );
+    let (venue_entry_b, _vault_venue_b) = approve_withdraw_venue(
+        &mut svm,
+        &payer,
+        &authority,
+        vault_pubkey,
+        authority.pubkey(),
+        7,
+    );
 
     helper_mint_to(
         &mut svm,
@@ -463,9 +570,7 @@ fn test_withdraw_assets_rejects_mismatched_vault_venue() {
         &token::ID,
     );
 
-    let recipient = Keypair::new();
-    svm.airdrop(&recipient.pubkey(), 1_000_000_000).unwrap();
-    let recipient_ata = create_ata(&mut svm, &recipient, &asset_mint.pubkey(), &token::ID);
+    let recipient_ata = create_ata(&mut svm, &authority, &asset_mint.pubkey(), &token::ID);
 
     let err = WithdrawAssetsBuilder::new()
         .authority(authority.pubkey())
@@ -526,8 +631,14 @@ fn test_withdraw_assets_respects_external_withdraw_rolling_limit() {
         .instruction()
         .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
         .expect("set external withdraw rolling limit should succeed");
-    let (venue_entry, vault_venue) =
-        approve_withdraw_venue(&mut svm, &payer, &authority, vault_pubkey, 4);
+    let (venue_entry, vault_venue) = approve_withdraw_venue(
+        &mut svm,
+        &payer,
+        &authority,
+        vault_pubkey,
+        authority.pubkey(),
+        4,
+    );
 
     helper_mint_to(
         &mut svm,
@@ -538,9 +649,7 @@ fn test_withdraw_assets_respects_external_withdraw_rolling_limit() {
         &token::ID,
     );
 
-    let recipient = Keypair::new();
-    svm.airdrop(&recipient.pubkey(), 1_000_000_000).unwrap();
-    let recipient_ata = create_ata(&mut svm, &recipient, &asset_mint.pubkey(), &token::ID);
+    let recipient_ata = create_ata(&mut svm, &authority, &asset_mint.pubkey(), &token::ID);
 
     WithdrawAssetsBuilder::new()
         .authority(authority.pubkey())

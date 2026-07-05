@@ -27,29 +27,30 @@ redemptions, and per-tranche FIFO queue counters. It also implements the first
 Phase 5 instant-settlement slice: a creation-time
 `InstantSettlement` TLV opt-in for primary-asset, non-tranche `instant_deposit`
 and `instant_redeem`, with optional min/max per-transaction deposit and redeem
-bounds plus per-user rolling limits. This pass also implements vault-level
-protocol fee splits: `protocol_fee_bps` and `protocol_fee_recipient` skim from
-already-computed deposit, withdrawal, primary instant-redemption, and
-single-tranche performance fees before the remaining fee is paid to the regular
-fee recipient.
+bounds plus per-user rolling limits. This pass also implements protocol fee
+splits: vault-level `protocol_fee_bps` skims from already-computed deposit,
+withdrawal, primary instant-redemption, and single-tranche performance fees
+before the remaining fee is paid to the regular fee recipient. `Vault`
+recipient routing remains the fallback, and a singleton `ProtocolFeeConfig` PDA
+can override recipient routing when supplied.
 
 The full MD plan is broader than this implementation. USD-normalized aggregate
 NAV, validated venue CPI execution, external protocol custody, tranche-aware or
 secondary-asset instant settlement, oracle adapters, tranche-aware performance
-fees, and program-wide protocol fee governance/configuration are not
-implemented.
+fees, global protocol fee bps overrides, and richer program-wide protocol fee
+governance are not implemented.
 
 ## Phase Results
 
-| Phase                          | Result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase 0 fork baseline          | Implemented: renamed crates, clients, IDL, program ID, package metadata, NOTICE, audit provenance.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Phase 1 roles/risk/NAV         | Partial: core role split, fresh NAV, NAV guard tests, breaker, deposit cap, withdrawal/redemption plus manager deploy/pull rolling limits, secondary per-asset manager rolling buckets, vault-config, deposit/withdrawal fee, and mutable non-fee TLV extension timelock queues, plus single-tranche performance fees with a configurable crystallization interval and vault-level protocol fee splits implemented; tranche-aware fee accrual and program-wide protocol fee governance remain future work.                                                                                                                                                                                                                                                                                                                                                                                   |
-| Phase 2 multi-asset            | Partial: curator-only `VaultAsset` add/remove instructions, per-asset reserve/pending token PDAs, max-approved-asset guard, zero-balance removal guard, secondary-asset deposit create/approve/cancel/reject/claim, secondary-asset async redeem create/approve/cancel/reject/claim, per-asset pending/idle ledger updates, per-asset deployed-balance updates through the constrained venue-position path, and per-asset deposit cap tests are implemented. USD NAV aggregation remains future work.                                                                                                                                                                                                                                                                                                                                                                                        |
-| Phase 3 venue registry         | Partial: `withdraw_assets` is now disabled by default and gated by the creation-time `ExternallyManagedWithdrawals` TLV extension plus an active `VenueEntry` and matching active `VaultVenue` approval. `VenueEntry`, `VaultVenue`, and primary/approved-secondary asset `Position` PDAs exist, with a vault-owned SPL token-account deploy/pull stub and post-transfer balance-delta checks. Validated `execute_venue_action`, arbitrary external-protocol custody, and vault-in-vault cycle prevention remain future work.                                                                                                                                                                                                                                                                                                                                                                |
-| Phase 4 tranches               | Partial: `initialize_tranches` creates a `TrancheConfig` PDA before vault initialization, requires exactly two tranche mints by reusing the existing `Vault.share_mint` as one side, transfers the second zero-supply tranche mint to vault authority, and stores `Vault.tranche_config`. Tranche-enabled `update_vault_nav` now requires tranche accounts and applies senior-target gain allocation plus junior-first loss allocation. Async request lifecycle paths store `Request.share_mint_address`, validate `TrancheConfig`, enforce configured per-direction request min/max bounds, and mint/burn/claim against the selected tranche mint. `approve_request` enforces the junior-buffer floor for senior deposits and junior redemptions. Optional subscription/redemption queues now use senior/junior lane-local counters in tranche mode. Tranche-aware fees remain future work. |
-| Phase 5 instant path/reporting | Partial: `initialize_instant_settlement` enables primary-asset, non-tranche instant deposits and redeems with optional min/max per-transaction deposit/redeem bounds and per-user rolling limits through `InstantSettlementUser`. The path requires a set NAV, honors NAV staleness, applies deposit/withdrawal plus instant redemption fees, checks reserve liquidity, consumes per-user instant limits plus gross redemption rolling limits, and updates `Vault.total_asset_balance`. Secondary assets, tranche-aware instant settlement, and oracle-priced instant settlement remain future work.                                                                                                                                                                                                                                                                                         |
-| Phase 6 hardening              | Local verification complete for the implemented subset; added property-test coverage for asset/share round-trip value conservation, tranche-waterfall conservation/loss ordering, rolling-limit epoch-window accounting, secondary venue-position ledger conservation/fail-closed movement, and fee rounding/pass-through invariants, plus integration regressions for secondary per-asset manager rolling buckets and instant-path Token-2022 transfer fees being re-enabled after vault setup. External audit still required.                                                                                                                                                                                                                                                                                                                                                              |
+| Phase                          | Result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase 0 fork baseline          | Implemented: renamed crates, clients, IDL, program ID, package metadata, NOTICE, audit provenance.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Phase 1 roles/risk/NAV         | Partial: core role split, fresh NAV, NAV guard tests, breaker, deposit cap, withdrawal/redemption plus manager deploy/pull rolling limits, secondary per-asset manager rolling buckets, vault-config, deposit/withdrawal fee, and mutable non-fee TLV extension timelock queues, plus single-tranche performance fees with a configurable crystallization interval, vault-level protocol fee bps, and singleton protocol fee recipient routing implemented; tranche-aware fee accrual, global protocol fee bps overrides, and richer program-wide protocol fee governance remain future work.                                                                                                                                                                                                                                                                                                                                                       |
+| Phase 2 multi-asset            | Partial: curator-only `VaultAsset` add/remove instructions, per-asset reserve/pending token PDAs, max-approved-asset guard, zero-balance removal guard, secondary-asset request creation plus cancel/reject unwind paths, fail-closed secondary approvals until pricing exists, per-asset deployed-balance updates through the constrained venue-position path, and per-asset deposit cap tests are implemented. USD NAV aggregation remains future work.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Phase 3 venue registry         | Partial: `withdraw_assets` is now disabled by default and gated by the creation-time `ExternallyManagedWithdrawals` TLV extension plus an active `VenueEntry`, matching active `VaultVenue` approval, and recipient token account owned by `VaultVenue.recipient_authority`. `VenueEntry`, `VaultVenue`, and primary/approved-secondary asset `Position` PDAs exist, with a vault-owned SPL token-account deploy/pull stub and post-transfer balance-delta checks. Validated `execute_venue_action`, arbitrary external-protocol custody, and vault-in-vault cycle prevention remain future work.                                                                                                                                                                                                                                                                                                                                                   |
+| Phase 4 tranches               | Partial: `initialize_tranches` creates a `TrancheConfig` PDA before vault initialization, requires exactly two tranche mints by reusing the existing `Vault.share_mint` as one side, transfers the second zero-supply tranche mint to vault authority, and stores `Vault.tranche_config`. Tranche-enabled `update_vault_nav` now requires tranche accounts and applies senior-target gain allocation plus junior-first loss allocation. Async request lifecycle paths store `Request.share_mint_address`, validate `TrancheConfig`, enforce configured per-direction request min/max bounds, and mint/burn/claim against the selected tranche mint. `approve_request` enforces the junior-buffer floor for senior deposits and junior redemptions. Optional subscription/redemption queues now use senior/junior lane-local counters in tranche mode. Tranche-aware fees remain future work; tranche vaults reject single-tranche performance fees. |
+| Phase 5 instant path/reporting | Partial: `initialize_instant_settlement` enables primary-asset, non-tranche instant deposits and redeems with mandatory nonzero NAV staleness and instant-redemption-fee guards plus optional min/max per-transaction deposit/redeem bounds and per-user rolling limits through `InstantSettlementUser`. The path requires a set NAV, honors NAV staleness, applies deposit/withdrawal plus instant redemption fees, checks reserve liquidity, consumes per-user instant limits plus gross redemption rolling limits, and updates `Vault.total_asset_balance`. Secondary assets, tranche-aware instant settlement, and oracle-priced instant settlement remain future work.                                                                                                                                                                                                                                                                         |
+| Phase 6 hardening              | Local verification complete for the implemented subset; added property-test coverage for asset/share round-trip value conservation, tranche-waterfall conservation/loss ordering, rolling-limit epoch-window accounting, secondary venue-position ledger conservation/fail-closed movement, and fee rounding/pass-through invariants, plus integration regressions for secondary per-asset manager rolling buckets and instant-path Token-2022 transfer fees being re-enabled after vault setup. External audit still required.                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 ## Verification
 
@@ -99,8 +100,9 @@ and `cancel_extension_update` at 3,770 CU.
 
 - The implementation intentionally stops short of claiming Phase 2-6 completion.
 - Phase 2 currently covers the asset approval/accounting PDA surface and
-  secondary async deposits/redemptions. USD-normalized aggregate NAV,
-  and oracle pricing remain future work.
+  secondary request creation plus cancel/reject unwind paths. Secondary
+  approvals fail closed until USD-normalized aggregate NAV and oracle pricing
+  exist.
 - External-withdrawal and gross redemption rolling limits are enforced with
   in-vault epoch windows. Primary manager deploy/pull uses the vault-level
   manager epoch window, and secondary manager deploy/pull uses per-`VaultAsset`
@@ -118,22 +120,24 @@ and `cancel_extension_update` at 3,770 CU.
   Tranche-aware fee accounting is still not implemented.
 - Performance fees are implemented for the legacy single-share-mint NAV path,
   including a configurable crystallization interval. Protocol fee skims apply to
-  those single-tranche performance fee shares when configured, but there is no
-  tranche-specific high-water mark or tranche-aware fee accrual yet.
-- Protocol fees are implemented as vault-level `protocol_fee_bps` and
-  `protocol_fee_recipient` fields using the existing vault-config update and
-  timelock path. There is no program-wide protocol config, governance authority,
-  or migration policy yet.
+  those single-tranche performance fee shares when configured. Tranche vaults
+  reject `performance_fee_bps > 0` until tranche-specific high-water marks and
+  tranche-aware fee accrual exist.
+- Protocol fees are implemented as vault-level `protocol_fee_bps` with
+  `Vault.protocol_fee_recipient` as fallback routing. A singleton
+  `ProtocolFeeConfig` PDA can override recipient routing, but global protocol
+  fee bps, authority transfer, and migration policy remain future work.
 - Instant settlement is implemented only for primary-asset, non-tranche vaults.
-  It supports optional per-transaction and per-user rolling limits, but does not
+  It requires nonzero NAV staleness and instant-redemption-fee guards and
+  supports optional per-transaction and per-user rolling limits, but does not
   support secondary assets, tranche-aware settlement, or oracle-priced NAV
   verification.
 - `Oracle` and `Hybrid` NAV modes are enum/config scaffolding only and rejected
   on-chain.
 - `withdraw_assets` is behind an externally managed withdrawal TLV opt-in,
-  active venue approval, curator authorization, and rolling-limit gates. It is
-  not a validated CPI boundary and does not bind the recipient to a venue
-  template.
+  active venue approval, approved recipient authority, curator authorization,
+  and rolling-limit gates. It is not a validated CPI boundary and does not
+  validate downstream venue account templates.
 - Web app/UI work was out of scope in the MD plan; only stale package/import
   names were updated.
 
@@ -146,10 +150,9 @@ and `cancel_extension_update` at 3,770 CU.
   `PendingExtensionUpdate`, and the `InstantSettlementUser` PDA.
 - Secondary asset approval and removal semantics, including zero-balance close
   checks and Token-2022 mint-extension validation.
-- Secondary async asset lifecycle accounting across deposit
-  create/approve/cancel/reject/claim and redeem create/approve/cancel/reject/
-  claim, claim asset identity checks, pending-vault validation, and per-asset
-  cap/idle-balance enforcement.
+- Secondary async asset lifecycle accounting across deposit/redeem request
+  creation and cancel/reject unwind paths, fail-closed approval, request asset
+  identity checks, pending-vault validation, and per-asset cap enforcement.
 - Venue registry state semantics, including registry-authority provenance,
   per-vault approval timelock blocking, paused-entry rejection, use as a
   `withdraw_assets` gate, and the absence of CPI execution in the current
@@ -295,25 +298,33 @@ Phase 3 venue-registry state review completed. No blocking findings:
 
 - `VenueEntry` creation is bounded by `MAX_VENUE_DISCRIMINATORS`, zeroes unused
   discriminator bytes, and stores explicit registry-authority provenance.
-- `VaultVenue` approval is curator-only, rejects paused venue entries, and is
-  blocked by vault timelock until a queued venue-approval flow exists.
+- `VaultVenue` approval is curator-only, rejects paused venue entries, stores
+  the approved withdrawal recipient authority, and is blocked by vault timelock
+  until a queued venue-approval flow exists.
 - No instruction executes arbitrary venue CPI, so the new registry state cannot
   become a permissive CPI escape hatch.
 
 Phase 3 withdraw-assets venue-approval review completed. No blocking findings:
 
 - `withdraw_assets` now requires both the creation-time TLV opt-in and an
-  active approved venue before consuming external-withdraw rolling-limit state
-  or moving reserve tokens.
+  active approved venue with matching recipient authority before consuming
+  external-withdraw rolling-limit state or moving reserve tokens.
 - The `VaultVenue` PDA is constrained to `(vault, venue_entry)` and checked
   against both stored keys, so a venue approval for another vault or entry
   cannot be replayed.
 - Pausing the registry `VenueEntry` invalidates later withdrawal attempts
   through that venue, while existing curator, pause, primary-asset, token
   account, and rolling-limit checks remain in force.
-- This remains intentionally narrower than a CPI safety boundary: it does not
-  validate downstream account templates, target program semantics, or bind the
-  withdrawal recipient to venue metadata.
+- This remains intentionally narrower than a CPI safety boundary: it binds the
+  withdrawal recipient authority to the `VaultVenue` approval, but does not
+  validate downstream account templates or target program semantics.
+
+Exit-path pause behavior review completed. No blocking findings:
+
+- `claim` and owner `cancel_request` remain blocked while the vault is paused.
+- Curator/fulfiller `reject_request` intentionally remains available while
+  paused so pending requests can be unwound during incident response; refunds
+  and share mints still route to request-owner token accounts.
 
 Phase 3 position-stub review completed. No blocking findings:
 
@@ -331,10 +342,9 @@ Phase 3 secondary-position review completed. No blocking findings:
 - Secondary deploy/pull updates `VaultAsset.idle_balance` and
   `VaultAsset.deployed_balance` only after exact token-account delta
   verification and `Position.amount` accounting.
-- LiteSVM coverage funds the secondary reserve through the request approval
-  lifecycle, then verifies secondary deploy, partial pull, full pull, and
-  zero-balance position removal. A missing-`VaultAsset` secondary position
-  creation attempt fails closed.
+- LiteSVM coverage pre-funds the secondary reserve/ledger fixture, then verifies
+  secondary deploy, partial pull, full pull, and zero-balance position removal.
+  A missing-`VaultAsset` secondary position creation attempt fails closed.
 
 Phase 4 tranche-scaffold/waterfall review completed. No blocking findings:
 
@@ -417,17 +427,14 @@ Phase 2 secondary-redemption review completed. No blocking findings:
   `Request.asset_mint_address`/`Request.share_mint_address` through later
   lifecycle steps.
 - `approve_request` reuses the existing secondary-asset reserve/pending PDA
-  validation, transfers gross redemption assets out of the per-asset reserve,
-  decrements `VaultAsset.idle_balance`, and applies withdrawal fees before
-  setting the net claimable amount.
-- `claim` rejects secondary-asset redeem claims unless the supplied pending
-  vault matches `VaultAsset.pending_vault`, preventing a caller from substituting
-  another vault-owned token account.
+  validation and then rejects secondary assets until per-asset pricing exists.
+- Secondary redeem claim remains disabled because approval cannot make a
+  secondary redeem claimable without pricing.
 - Redeem cancel/reject paths occur before assets move and restore the burned
   shares while still validating request asset/share identity.
-- LiteSVM coverage includes secondary redeem create/approve/claim, wrong pending
-  vault rejection, missing `VaultAsset` rejection at request creation, and
-  secondary redeem cancel/reject share restoration.
+- LiteSVM coverage includes secondary redeem creation, approval fail-closed
+  behavior, missing `VaultAsset` rejection at request creation, and secondary
+  redeem cancel/reject share restoration.
 
 Phase 5 instant-settlement review completed. Blocking finding fixed:
 
@@ -443,10 +450,10 @@ No remaining blocking findings in the Phase 5 instant/per-user review:
 - Instant settlement is disabled unless the `InstantSettlement` TLV extension is
   present and enabled.
 - The handlers reject tranche-enabled vaults, require initialized/unpaused
-  state, require nonzero NAV, honor NAV staleness, validate asset-mint
-  extensions, enforce per-transaction thresholds before token movement, use
-  checked math, and keep reserve liquidity/redemption rolling limits on gross
-  redeemed assets.
+  state, require nonzero NAV, require nonzero staleness plus
+  instant-redemption-fee guards, validate asset-mint extensions, enforce
+  per-transaction thresholds before token movement, use checked math, and keep
+  reserve liquidity/redemption rolling limits on gross redeemed assets.
 - Per-user instant limits are optional and default-disabled; when configured,
   they require `rolling_limit_window_slots`, require and initialize/validate the
   `InstantSettlementUser` PDA keyed by `(vault, user)`, and consume gross deposit

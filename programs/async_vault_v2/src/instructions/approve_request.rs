@@ -17,7 +17,7 @@ use crate::{
     },
     utils::{
         calculate_assets, calculate_shares, check_and_advance_tranche_queue,
-        read_mint_supply_and_decimals, split_protocol_fee,
+        read_mint_supply_and_decimals, resolve_protocol_fee_recipient, split_protocol_fee,
         validate_asset_mint_extensions_from_acct_info, validate_request_share_mint,
         validate_token_account_owner, TrancheRequestInfo,
     },
@@ -396,6 +396,7 @@ pub fn handler<'info>(
         vault_asset.assert_matches(vault_key, asset_mint_key)?;
         vault_asset.assert_reserve(ctx.accounts.vault_token_account.key())?;
         vault_asset.assert_pending_vault(ctx.accounts.pending_vault.key())?;
+        return err!(AsyncVaultError::UnsupportedPhaseConfig);
     }
 
     require!(ctx.accounts.vault.nav > 0, AsyncVaultError::NavIsNotSet);
@@ -459,7 +460,8 @@ pub fn handler<'info>(
     let mut remaining = ctx
         .remaining_accounts
         .iter()
-        .skip(share_mint_context.consumed_accounts);
+        .skip(share_mint_context.consumed_accounts)
+        .peekable();
     let tranche_config_info = ctx.remaining_accounts.first();
 
     // Transfer assets between Vault and Pending Vault (aka escrow)
@@ -502,12 +504,17 @@ pub fn handler<'info>(
             None
         };
         let protocol_fee_recipient_token_account_info = if protocol_fee > 0 {
+            let (protocol_fee_recipient, consumed_protocol_fee_config) =
+                resolve_protocol_fee_recipient(&ctx.accounts.vault, remaining.peek().copied())?;
+            if consumed_protocol_fee_config {
+                remaining.next();
+            }
             let protocol_fee_recipient_token_account_info = remaining
                 .next()
                 .ok_or(AsyncVaultError::MissingFeeRecipient)?;
             validate_token_account_owner(
                 protocol_fee_recipient_token_account_info,
-                &ctx.accounts.vault.protocol_fee_recipient,
+                &protocol_fee_recipient,
             )?;
             Some(protocol_fee_recipient_token_account_info)
         } else {
@@ -572,12 +579,17 @@ pub fn handler<'info>(
             None
         };
         let protocol_fee_recipient_token_account_info = if protocol_fee > 0 {
+            let (protocol_fee_recipient, consumed_protocol_fee_config) =
+                resolve_protocol_fee_recipient(&ctx.accounts.vault, remaining.peek().copied())?;
+            if consumed_protocol_fee_config {
+                remaining.next();
+            }
             let protocol_fee_recipient_token_account_info = remaining
                 .next()
                 .ok_or(AsyncVaultError::MissingFeeRecipient)?;
             validate_token_account_owner(
                 protocol_fee_recipient_token_account_info,
-                &ctx.accounts.vault.protocol_fee_recipient,
+                &protocol_fee_recipient,
             )?;
             Some(protocol_fee_recipient_token_account_info)
         } else {
