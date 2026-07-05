@@ -161,8 +161,11 @@ pub mod async_vault_v2 {
     }
 
     /// Approves a registered venue for a specific vault.
-    pub fn approve_vault_venue(ctx: Context<ApproveVaultVenue>) -> Result<()> {
-        instructions::approve_vault_venue::handler(ctx)
+    pub fn approve_vault_venue(
+        ctx: Context<ApproveVaultVenue>,
+        args: ApproveVaultVenueArgs,
+    ) -> Result<()> {
+        instructions::approve_vault_venue::handler(ctx, args)
     }
 
     /// Removes a zero-position venue approval from a vault.

@@ -254,6 +254,8 @@ Implemented instructions:
 Important fields:
 
 - `vault`, `venue_entry`: approval identity.
+- `recipient_authority`: token-account owner approved to receive
+  `withdraw_assets` transfers for this vault/venue approval.
 - `target_program`, `routine_safe`: copied from `VenueEntry` at approval time.
 - `position_count`: number of active positions for this venue approval; must be
   zero before removal.
@@ -262,7 +264,8 @@ Important fields:
 Implemented instructions:
 
 - `approve_vault_venue`: curator-only, blocked when the vault timelock is active
-  until a queued venue-approval flow exists, and rejects paused venue entries.
+  until a queued venue-approval flow exists, rejects paused venue entries, and
+  stores a non-default recipient authority for externally managed withdrawals.
 - `remove_vault_venue`: curator-only, blocked when timelock is active, and
   closes only zero-position approvals.
 
@@ -382,7 +385,8 @@ Important fields:
 - `nav_update_version`: NAV version at request creation; V2 approval can require
   a newer `vault.nav_version`.
 - `request_state`: `Pending`, `Claimable`, `Cancelled`, or `Rejected`.
-- `operator`: optional delegated claimant/canceler.
+- `operator`: optional delegated claimant. Pending cancellation remains
+  owner-only.
 
 ## Pending Vault Update
 
@@ -446,8 +450,9 @@ Implemented extensions:
 - Subscription and redemption FIFO queues.
 - Externally managed withdrawals. This is a creation-time opt-in gate for
   `withdraw_assets`; the instruction also requires an active `VenueEntry` and
-  matching active `VaultVenue`. Without the TLV extension or active venue
-  approval, free-form reserve withdrawals are rejected.
+  matching active `VaultVenue`, and the recipient token account must be owned by
+  `VaultVenue.recipient_authority`. Without the TLV extension, active venue
+  approval, or approved recipient owner, reserve withdrawals are rejected.
 - Instant settlement. This is a creation-time opt-in gate for primary-asset,
   non-tranche `instant_deposit` and `instant_redeem`. Initialization and
   execution require nonzero `max_nav_staleness_slots` and nonzero

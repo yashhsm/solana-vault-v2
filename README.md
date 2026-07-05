@@ -77,8 +77,9 @@ flowchart TD
   scoped for V2 flows.
 - `VaultAsset`: approved secondary asset metadata plus per-asset reserve,
   pending, idle, deployed, and cap accounting.
-- `VenueEntry` and `VaultVenue`: venue registry metadata and per-vault approval
-  state. These do not execute arbitrary CPI yet.
+- `VenueEntry` and `VaultVenue`: venue registry metadata, per-vault approval
+  state, and approved withdrawal recipient authority. These do not execute
+  arbitrary CPI yet.
 - `Position`: constrained SPL token-account custody stub for manager deploy/pull
   tests.
 - `TrancheConfig`: senior/junior share-mint config, NAV snapshots, request

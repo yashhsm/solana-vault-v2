@@ -158,6 +158,8 @@ pub enum AsyncVaultError {
     InstantRedeemSharesBelowMinimum,
     #[msg("Instant redeem shares are above the configured maximum.")]
     InstantRedeemSharesAboveMaximum,
+    #[msg("Withdraw recipient authority does not match the approved venue recipient.")]
+    InvalidVenueRecipient,
 }
 
 impl From<vault_common::VaultMathError> for AsyncVaultError {

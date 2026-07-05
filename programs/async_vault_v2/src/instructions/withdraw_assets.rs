@@ -42,6 +42,8 @@ pub struct WithdrawAssets<'info> {
     #[account(
         mut,
         token::mint = asset_mint.key(),
+        constraint = recipient_token_account.owner == vault_venue.recipient_authority
+            @ AsyncVaultError::InvalidVenueRecipient,
     )]
     pub recipient_token_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -49,7 +51,7 @@ pub struct WithdrawAssets<'info> {
 }
 
 impl<'info> WithdrawAssets<'info> {
-    pub fn transfer_assets_to_authority(&mut self, amount: u64) -> Result<()> {
+    pub fn transfer_assets_to_approved_recipient(&mut self, amount: u64) -> Result<()> {
         let seeds: &[&[&[u8]]] = &[&[
             VAULT_CONFIG_SEED,
             self.vault.share_mint.as_ref(),
@@ -78,6 +80,6 @@ pub fn handler(ctx: Context<WithdrawAssets>, amount: u64) -> Result<()> {
     ctx.accounts
         .vault
         .consume_external_withdraw_rolling_limit(amount, Clock::get()?.slot)?;
-    ctx.accounts.transfer_assets_to_authority(amount)?;
+    ctx.accounts.transfer_assets_to_approved_recipient(amount)?;
     Ok(())
 }

@@ -160,6 +160,7 @@ fn approve_vault_venue(
         .vault(vault)
         .venue_entry(venue_entry)
         .vault_venue(vault_venue)
+        .recipient_authority(authority.pubkey())
         .instruction()
         .send_transaction(svm, &payer.pubkey(), &[payer, authority])
 }
@@ -520,6 +521,7 @@ fn test_curator_can_approve_and_remove_vault_venue() {
     let vault_venue = read_vault_venue(&svm, vault_venue_pubkey);
     assert_eq!(vault_venue.vault, vault_pubkey);
     assert_eq!(vault_venue.venue_entry, venue_entry);
+    assert_eq!(vault_venue.recipient_authority, authority.pubkey());
     assert_eq!(vault_venue.target_program, spl_token::ID);
     assert!(vault_venue.routine_safe);
     assert!(!vault_venue.paused);

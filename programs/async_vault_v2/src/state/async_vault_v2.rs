@@ -278,6 +278,8 @@ pub struct VenueEntry {
 pub struct VaultVenue {
     pub vault: Pubkey,
     pub venue_entry: Pubkey,
+    /// Token-account authority approved as the externally managed withdrawal recipient.
+    pub recipient_authority: Pubkey,
     pub target_program: Pubkey,
     pub routine_safe: bool,
     pub paused: bool,
