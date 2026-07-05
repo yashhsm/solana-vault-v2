@@ -37,28 +37,34 @@ The current implementation focuses on testable on-chain primitives:
 
 ## Use Cases
 
-The program is a shell for pooled capital: it mints shares, settles
-deposits/redemptions against NAV, and enforces roles, caps, and pauses. Strategy
-logic lives off-chain and drives the vault through its operator roles. Every
-vault is exactly one of four shells, and the program's own constraints keep them
-distinct — instant settlement is single-asset and non-tranche, while tranches
-and secondary assets are async-only. Together they cover the space of what can
-be built today.
+The program issues shares, settles deposits/redemptions against NAV, and enforces
+roles, caps, and pauses; strategy logic runs off-chain through the operator roles.
+Every vault takes one of four shells:
 
-- **Instant single-asset vaults** — deposit and redeem on demand against current
-  NAV, backed by a liquid reserve. _Cash sweeps, stablecoin savings, treasury
-  reserves._
-- **Async managed funds** — entries and exits settle as requests against a
-  freshly signed NAV, so the vault can hold illiquid or external-venue positions.
-  _Lending/LP funds, delta-neutral perp carry, systematic trading,
-  prediction-market strategies._
-- **Tranched vaults** — one strategy split into senior and junior shares; a
-  waterfall routes first losses to junior and target gains to senior.
-  _Principal-protected notes, first-loss-buffered yield, insurance-buffer
-  structures._
-- **Multi-asset vaults** — several approved deposit assets accounted per asset
-  under one vault (NAV signed by the operator, since pricing is off-chain).
-  _Multi-stablecoin cash, blue-chip baskets, index-style intake._
+**Instant single-asset** — deposit and redeem on demand against current NAV,
+backed by a liquid reserve.
+
+- **USDC Cash Vault** — park stablecoins, earn lending yield, exit anytime.
+- **Treasury Reserve** — conservative idle-balance sweep for apps and DAOs.
+
+**Async managed fund** — entries and exits settle as requests against a freshly
+signed NAV, so the vault can hold illiquid or external-venue positions.
+
+- **Yield Router** — rotates deposits into the best approved lending/LP venue.
+- **Delta-Neutral Carry** — hedged perp/spot positions harvesting funding.
+- **Prediction-Market Fund** — a curated basket of event trades or CLOB market making.
+
+**Tranched (senior / junior)** — one strategy split into two risk layers; a
+waterfall sends first losses to junior and target gains to senior.
+
+- **Protected Yield Note** — senior targets a steady return; junior absorbs first losses.
+- **First-Loss Boost** — junior takes the downside for leveraged upside.
+
+**Multi-asset** — accepts several approved deposit assets, accounted per asset
+(NAV signed off-chain, since pricing isn't on-chain).
+
+- **Multi-Stablecoin Cash** — one vault, many stables, unified shares.
+- **Blue-Chip Index** — a rebalanced basket of ecosystem majors.
 
 ## Architecture
 
