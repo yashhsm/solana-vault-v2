@@ -128,6 +128,10 @@ pub mod lite {
                 "initialize_redemption_queue",
             ),
             (
+                INITIALIZE_PROTOCOL_FEE_CONFIG_DISCRIMINATOR,
+                "initialize_protocol_fee_config",
+            ),
+            (
                 INITIALIZE_SUBSCRIPTION_QUEUE_DISCRIMINATOR,
                 "initialize_subscription_queue",
             ),
@@ -174,6 +178,10 @@ pub mod lite {
             (
                 UPDATE_PAUSABLE_SUBSCRIPTIONS_DISCRIMINATOR,
                 "update_pausable_subscriptions",
+            ),
+            (
+                UPDATE_PROTOCOL_FEE_CONFIG_DISCRIMINATOR,
+                "update_protocol_fee_config",
             ),
             (UPDATE_VAULT_DISCRIMINATOR, "update_vault"),
             (UPDATE_VAULT_NAV_DISCRIMINATOR, "update_vault_nav"),

@@ -8,7 +8,8 @@ use crate::{
     error::AsyncVaultError,
     state::{TrancheConfig, Vault, TRANCHE_CONFIG_SEED, VAULT_CONFIG_SEED},
     utils::{
-        read_mint_supply_and_decimals, split_protocol_fee, validate_token_account_mint_and_owner,
+        read_mint_supply_and_decimals, resolve_protocol_fee_recipient, split_protocol_fee,
+        validate_token_account_mint_and_owner,
     },
 };
 
@@ -79,7 +80,7 @@ fn maybe_crystallize_performance_fee<'info>(
     vault: &mut Account<'info, Vault>,
     updated_nav: u128,
     timestamp: i64,
-    remaining_accounts: &[AccountInfo<'info>],
+    remaining_accounts: &'info [AccountInfo<'info>],
 ) -> Result<usize> {
     if updated_nav <= vault.high_water_mark {
         return Ok(0);
@@ -113,16 +114,31 @@ fn maybe_crystallize_performance_fee<'info>(
         .get(1)
         .ok_or(AsyncVaultError::MissingRequiredAccount)?;
     let protocol_fee_enabled = vault.protocol_fee_bps > 0;
-    let protocol_fee_share_account_info = if protocol_fee_enabled {
-        Some(
-            remaining_accounts
-                .get(2)
-                .ok_or(AsyncVaultError::MissingRequiredAccount)?,
-        )
+    let mut next_account_index = 2usize;
+    let protocol_fee_recipient = if protocol_fee_enabled {
+        let (recipient, consumed_protocol_fee_config) =
+            resolve_protocol_fee_recipient(vault, remaining_accounts.get(next_account_index))?;
+        if consumed_protocol_fee_config {
+            next_account_index = next_account_index
+                .checked_add(1)
+                .ok_or(AsyncVaultError::ArithmeticError)?;
+        }
+        Some(recipient)
     } else {
         None
     };
-    let share_token_program_index = if protocol_fee_enabled { 3 } else { 2 };
+    let protocol_fee_share_account_info = if protocol_fee_enabled {
+        let account = remaining_accounts
+            .get(next_account_index)
+            .ok_or(AsyncVaultError::MissingRequiredAccount)?;
+        next_account_index = next_account_index
+            .checked_add(1)
+            .ok_or(AsyncVaultError::ArithmeticError)?;
+        Some(account)
+    } else {
+        None
+    };
+    let share_token_program_index = next_account_index;
     let share_token_program_info = remaining_accounts
         .get(share_token_program_index)
         .ok_or(AsyncVaultError::MissingRequiredAccount)?;
@@ -162,10 +178,12 @@ fn maybe_crystallize_performance_fee<'info>(
     let (protocol_fee_shares, fee_recipient_shares) =
         split_protocol_fee(fee_shares, vault.protocol_fee_bps)?;
     if let Some(protocol_fee_share_account_info) = protocol_fee_share_account_info {
+        let protocol_fee_recipient =
+            protocol_fee_recipient.ok_or(AsyncVaultError::MissingRequiredAccount)?;
         validate_token_account_mint_and_owner(
             protocol_fee_share_account_info,
             &vault.share_mint,
-            &vault.protocol_fee_recipient,
+            &protocol_fee_recipient,
         )?;
     }
 

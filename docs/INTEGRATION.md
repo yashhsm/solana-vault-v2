@@ -49,13 +49,13 @@ pnpm run generate-clients
 | User share balance             | User share token account amount                                                                                                                 | Implemented by SPL Token account                                                                            |
 | Pending request                | `Request` account fields                                                                                                                        | Implemented                                                                                                 |
 | Claimable amount               | `Request.amount` when `Request.request_state == Claimable`                                                                                      | Implemented                                                                                                 |
-| Secondary approved asset       | `VaultAsset` PDA from `[ASSET_CONFIG_SEED, vault, asset_mint]`                                                                                  | Partial; add/remove plus secondary async deposit/redeem lifecycle                                           |
-| Per-asset reserve/pending      | `VaultAsset.reserve`, `VaultAsset.pending_vault`                                                                                                | Partial; used by secondary deposits and redemptions                                                         |
-| Per-asset idle/deployed        | `VaultAsset.idle_balance`, `VaultAsset.deployed_balance`                                                                                        | Partial; secondary deposits/redeems and constrained venue deploy/pull update the ledger                     |
+| Secondary approved asset       | `VaultAsset` PDA from `[ASSET_CONFIG_SEED, vault, asset_mint]`                                                                                  | Partial; add/remove plus secondary request unwind paths; approval disabled until pricing exists             |
+| Per-asset reserve/pending      | `VaultAsset.reserve`, `VaultAsset.pending_vault`                                                                                                | Partial; used by secondary request creation/unwind paths                                                    |
+| Per-asset idle/deployed        | `VaultAsset.idle_balance`, `VaultAsset.deployed_balance`                                                                                        | Partial; constrained venue deploy/pull update the ledger for pre-funded secondary balances                  |
 | Per-asset deposit cap          | `VaultAsset.deposit_cap`, `VaultAsset.pending_deposit_amount`                                                                                   | Partial; enforced for secondary deposits                                                                    |
 | Per-asset manager bucket       | `VaultAsset.manager_window_start_slot`, `VaultAsset.manager_window_amount`, with `Vault.manager_rolling_limit` and `rolling_limit_window_slots` | Implemented for approved-secondary venue deploy/pull                                                        |
 | Externally managed withdrawals | `ExternallyManagedWithdrawals` vault TLV extension plus active `VenueEntry`/`VaultVenue` accounts                                               | Partial; gates `withdraw_assets` opt-in and venue approval; no CPI template validation                      |
-| Instant settlement             | `InstantSettlement` vault TLV extension and `InstantSettlementUser` PDA                                                                         | Partial; primary asset, non-tranche only; optional per-transaction and per-user rolling bounds              |
+| Instant settlement             | `InstantSettlement` vault TLV extension and `InstantSettlementUser` PDA                                                                         | Partial; primary asset, non-tranche only; requires nonzero staleness and instant fee guards                 |
 | Venue registry entry           | `VenueEntry` PDA from `[VENUE_ENTRY_SEED, registry_authority, venue_id]`                                                                        | Partial; state only, no CPI execution                                                                       |
 | Per-vault venue approval       | `VaultVenue` PDA from `[VAULT_VENUE_SEED, vault, venue_entry]`                                                                                  | Partial; approval state gates `withdraw_assets` and position stubs                                          |
 | Venue positions                | `Position` PDA from `[POSITION_SEED, vault, venue_entry, asset_mint]`                                                                           | Partial; primary and approved-secondary SPL token-account stub only                                         |
@@ -66,9 +66,9 @@ pnpm run generate-clients
 | Timelocked vault updates       | `PendingVaultUpdate`, `Vault.timelock_delay_slots`                                                                                              | Implemented for vault config updates                                                                        |
 | Timelocked fee changes         | `PendingFeeUpdate`, `Vault.timelock_delay_slots`                                                                                                | Implemented for deposit/withdrawal fee updates                                                              |
 | Other timelocked TLV changes   | `PendingExtensionUpdate`, `Vault.timelock_delay_slots`                                                                                          | Implemented for min subscription, min redemption, and pausable subscription/redemption updates              |
-| Performance fee                | `Vault.performance_fee_bps`, `Vault.high_water_mark`, `performance_fee_crystallization_interval_seconds`, `last_fee_crystallization_timestamp`  | Implemented for single-tranche NAV updates                                                                  |
+| Performance fee                | `Vault.performance_fee_bps`, `Vault.high_water_mark`, `performance_fee_crystallization_interval_seconds`, `last_fee_crystallization_timestamp`  | Implemented for single-tranche NAV updates; rejected for tranche vaults                                     |
 | Instant redemption fee         | `Vault.instant_redemption_fee_bps`                                                                                                              | Implemented for primary instant redeems only                                                                |
-| Protocol fee                   | `Vault.protocol_fee_bps`, `Vault.protocol_fee_recipient`                                                                                        | Partial; vault-level skim of implemented fee sources, no program-wide config                                |
+| Protocol fee                   | `Vault.protocol_fee_bps`, `Vault.protocol_fee_recipient`, singleton `ProtocolFeeConfig`                                                         | Partial; vault-level bps with optional program-level recipient routing for implemented fee sources          |
 
 ## Request Lifecycle
 
@@ -93,7 +93,9 @@ pnpm run generate-clients
    approvals, `TrancheConfig` comes first. If `min_junior_ratio_bps` is nonzero
    and the approval is a senior deposit or junior redemption, pass senior and
    junior mint accounts after `TrancheConfig`; fee-recipient accounts follow
-   those tranche accounts when fees are owed.
+   those tranche accounts when fees are owed. When a protocol fee is owed and
+   `ProtocolFeeConfig` should override `Vault.protocol_fee_recipient`, pass the
+   singleton PDA immediately before the protocol-fee token account.
 6. User or operator claims/cancels according to upstream lifecycle rules.
 
 ## Instant Settlement
@@ -101,9 +103,10 @@ pnpm run generate-clients
 Instant settlement is a Phase 5 partial implementation for primary-asset,
 non-tranche vaults:
 
-1. After `create_vault` and before `initialize_vault`, the curator calls
-   `initialize_instant_settlement` with `instant_redemption_fee_bps <= MAX_BPS`.
-   The initializer rejects tranche-enabled vaults and invalid threshold pairs
+1. After `create_vault` and before `initialize_vault`, the curator first sets a
+   nonzero `max_nav_staleness_slots`, then calls `initialize_instant_settlement`
+   with `0 < instant_redemption_fee_bps <= MAX_BPS`. The initializer rejects
+   tranche-enabled vaults, missing safety guards, and invalid threshold pairs
    where a nonzero max is below its min. Optional per-user deposit/redeem limits
    use `Vault.rolling_limit_window_slots`; nonzero per-user limits require a
    nonzero window at execution time.
@@ -116,7 +119,8 @@ non-tranche vaults:
    nonzero per-user deposit limit is configured, consumes any configured
    per-user gross-deposit window, applies any deposit fee extension, splits that
    fee between the fee recipient and protocol fee recipient when
-   `protocol_fee_bps` is nonzero, moves net assets directly into the reserve,
+   `protocol_fee_bps` is nonzero, optionally using `ProtocolFeeConfig` from
+   `remaining_accounts` for recipient routing, moves net assets directly into the reserve,
    mints shares from current NAV, and increments
    `Vault.total_asset_balance` by the net deposit.
 4. `instant_redeem` accepts only the base share mint, checks reserve liquidity,
@@ -125,7 +129,8 @@ non-tranche vaults:
    redeem limit is configured, consumes any configured per-user redeem-share
    window, applies withdrawal plus instant-redemption fees, splits those fees
    between the fee recipient and protocol fee recipient when
-   `protocol_fee_bps` is nonzero, consumes the gross redemption rolling limit,
+   `protocol_fee_bps` is nonzero, optionally using `ProtocolFeeConfig` from
+   `remaining_accounts` for recipient routing, consumes the gross redemption rolling limit,
    burns shares, transfers net assets to the user, and decrements
    `Vault.total_asset_balance` by the gross redeemed assets.
 
@@ -143,15 +148,14 @@ Secondary asset approval is an admin-only Phase 2 slice:
 3. Curator can call `remove_vault_asset` only after all stored per-asset balances
    and both token accounts are zero.
 
-Secondary deposit create/approve/cancel/reject/claim paths and secondary async
-redeem create/approve/claim paths are asset-scoped through
-`Request.asset_mint_address`. Redeem approval moves assets from the matching
-per-asset reserve into the matching per-asset pending vault; redeem claim
-validates that pending vault before transferring to the user. Redeem
-cancel/reject happens before assets move and restores burned shares. Constrained
-venue deploy/pull can move approved-secondary assets between
-`VaultAsset.idle_balance` and `VaultAsset.deployed_balance`; USD-normalized NAV
-aggregation is not implemented yet.
+Secondary deposit and redeem requests are asset-scoped through
+`Request.asset_mint_address`, but `approve_request` rejects secondary assets
+until USD-normalized per-asset pricing exists. Cancel/reject paths remain
+available so escrowed secondary deposits can refund assets and secondary redeem
+requests can restore burned shares. Constrained venue deploy/pull can move
+pre-funded approved-secondary assets between `VaultAsset.idle_balance` and
+`VaultAsset.deployed_balance`; USD-normalized NAV aggregation is not implemented
+yet.
 
 ## Venue Administration
 
@@ -218,9 +222,13 @@ Tranche config is a Phase 4 partial implementation:
    preserve committed tranche supply so approved-but-unclaimed shares are
    counted by later guarded approvals.
 
-Tranche-aware performance fees are not implemented yet. Single-tranche
-performance fee shares are split between `fee_recipient` and
-`protocol_fee_recipient` when `protocol_fee_bps` is nonzero.
+Tranche-aware performance fees are not implemented yet. `initialize_tranches`
+and vault config updates reject combining `Vault.tranche_config` with
+`performance_fee_bps > 0`; single-tranche performance fee shares are split
+between `fee_recipient` and `protocol_fee_recipient` when `protocol_fee_bps` is
+nonzero. To route through the singleton config, pass performance-fee remaining
+accounts as share mint, fee-recipient share account, `ProtocolFeeConfig`,
+protocol-fee share account, then share token program.
 
 ## Safety Notes
 
@@ -244,11 +252,12 @@ performance fee shares are split between `fee_recipient` and
   min/max amount bounds, and optional FIFO queues use senior/junior lane-local
   counters. Tranche-aware fees are still absent.
 - `InstantSettlement` is disabled by default and supports only primary-asset,
-  non-tranche vaults with creation-time per-transaction min/max bounds and
-  optional per-user rolling limits. It is not a substitute for secondary-asset
-  instant settlement, tranche-aware settlement, or oracle-priced NAV
-  verification.
-- Secondary approved assets can be used for async deposits/redemptions and the
-  constrained venue-position deploy/pull stub. Treat `VaultAsset` as partial
+  non-tranche vaults with nonzero staleness and instant-redemption-fee guards,
+  creation-time per-transaction min/max bounds, and optional per-user rolling
+  limits. It is not a substitute for secondary-asset instant settlement,
+  tranche-aware settlement, or oracle-priced NAV verification.
+- Secondary approved assets can be used for request creation/unwind paths and
+  the constrained venue-position deploy/pull stub, but secondary approvals are
+  disabled until per-asset pricing exists. Treat `VaultAsset` as partial
   multi-asset custody, not complete multi-asset NAV or instant-settlement
   support.

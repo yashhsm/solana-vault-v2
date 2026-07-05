@@ -1,7 +1,7 @@
 use anchor_spl::token;
 use async_vault_v2_client::{
-    lite::SendTransaction, sdk::program_id, NavMode, UpdateVaultBuilder, UpdateVaultNavBuilder,
-    Vault,
+    lite::SendTransaction, sdk::program_id, InitializeProtocolFeeConfigBuilder, NavMode,
+    UpdateVaultBuilder, UpdateVaultNavBuilder, Vault,
 };
 use borsh::BorshSerialize;
 use litesvm::LiteSVM;
@@ -21,6 +21,12 @@ use crate::{
         NAV_DELTA_EXCEEDED, UNAUTHORIZED_SIGNER, UNSUPPORTED_PHASE_CONFIG,
     },
 };
+
+const PROTOCOL_FEE_CONFIG_SEED: &[u8] = b"protocol_fee_config";
+
+fn protocol_fee_config_pda() -> solana_sdk::pubkey::Pubkey {
+    solana_sdk::pubkey::Pubkey::find_program_address(&[PROTOCOL_FEE_CONFIG_SEED], &program_id()).0
+}
 
 #[test_case(200 ; "update nav succeeds")]
 #[test_case(0 ; "update nav to zero succeeds")]
@@ -341,6 +347,118 @@ fn test_update_vault_nav_protocol_fee_splits_performance_fee_shares() {
     assert_eq!(
         get_mint_supply(&svm.get_account(&share_mint.pubkey()).unwrap()),
         1_071_428_571
+    );
+}
+
+#[test]
+fn test_update_vault_nav_protocol_fee_uses_program_config_recipient_when_supplied() {
+    let mut svm = LiteSVM::new();
+    let program_bytes = include_bytes!("../../../target/deploy/async_vault_v2.so");
+    svm.add_program(program_id(), program_bytes).unwrap();
+
+    let (
+        authority,
+        _payer,
+        _mint_authority,
+        _asset_mint,
+        share_mint,
+        _user,
+        _operator,
+        fee_recipient,
+        _reserve_pubkey,
+        vault_pubkey,
+        _pending_vault_pubkey,
+        _fee_recipient_ata,
+        user_share_account,
+    ) = set_up_async_vault_v2(&mut svm, token::ID, None, token::ID, 1_000_000_000);
+
+    let vault_protocol_fee_recipient = Keypair::new();
+    let configured_protocol_fee_recipient = Keypair::new();
+    svm.airdrop(&vault_protocol_fee_recipient.pubkey(), 1_000_000_000)
+        .unwrap();
+    svm.airdrop(&configured_protocol_fee_recipient.pubkey(), 1_000_000_000)
+        .unwrap();
+    let fee_recipient_share_account =
+        create_ata(&mut svm, &fee_recipient, &share_mint.pubkey(), &token::ID);
+    let vault_protocol_fee_share_account = create_ata(
+        &mut svm,
+        &vault_protocol_fee_recipient,
+        &share_mint.pubkey(),
+        &token::ID,
+    );
+    let configured_protocol_fee_share_account = create_ata(
+        &mut svm,
+        &configured_protocol_fee_recipient,
+        &share_mint.pubkey(),
+        &token::ID,
+    );
+    set_share_balance(
+        &mut svm,
+        &user_share_account,
+        &share_mint.pubkey(),
+        1_000_000_000,
+    );
+
+    UpdateVaultNavBuilder::new()
+        .authority(authority.pubkey())
+        .vault(vault_pubkey)
+        .updated_nav(1_000_000_000)
+        .instruction()
+        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
+        .expect("initial nav should succeed");
+
+    svm.expire_blockhash();
+    UpdateVaultBuilder::new()
+        .authority(authority.pubkey())
+        .share_mint(share_mint.pubkey())
+        .vault(vault_pubkey)
+        .performance_fee_bps(2_000)
+        .protocol_fee_bps(2_500)
+        .protocol_fee_recipient(vault_protocol_fee_recipient.pubkey())
+        .instruction()
+        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
+        .expect("set performance and protocol fee should succeed");
+
+    let protocol_fee_config = protocol_fee_config_pda();
+    InitializeProtocolFeeConfigBuilder::new()
+        .payer(authority.pubkey())
+        .authority(authority.pubkey())
+        .protocol_fee_config(protocol_fee_config)
+        .protocol_fee_recipient(configured_protocol_fee_recipient.pubkey())
+        .instruction()
+        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
+        .expect("initialize protocol fee config should succeed");
+
+    svm.expire_blockhash();
+    UpdateVaultNavBuilder::new()
+        .authority(authority.pubkey())
+        .vault(vault_pubkey)
+        .updated_nav(1_500_000_000)
+        .add_remaining_accounts(&[
+            AccountMeta::new(share_mint.pubkey(), false),
+            AccountMeta::new(fee_recipient_share_account, false),
+            AccountMeta::new_readonly(protocol_fee_config, false),
+            AccountMeta::new(configured_protocol_fee_share_account, false),
+            AccountMeta::new_readonly(token::ID, false),
+        ])
+        .instruction()
+        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
+        .expect("performance fee crystallization should use program-level protocol recipient");
+
+    assert_eq!(
+        get_token_account_amount(&svm.get_account(&fee_recipient_share_account).unwrap()),
+        53_571_428
+    );
+    assert_eq!(
+        get_token_account_amount(
+            &svm.get_account(&configured_protocol_fee_share_account)
+                .unwrap()
+        ),
+        17_857_143
+    );
+    assert_eq!(
+        get_token_account_amount(&svm.get_account(&vault_protocol_fee_share_account).unwrap()),
+        0
     );
 }
 

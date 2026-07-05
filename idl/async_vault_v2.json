@@ -1810,6 +1810,79 @@
       ]
     },
     {
+      "name": "initialize_protocol_fee_config",
+      "docs": [
+        "Initializes the singleton program-level protocol fee recipient config."
+      ],
+      "discriminator": [
+        217,
+        249,
+        137,
+        72,
+        29,
+        79,
+        187,
+        172
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "protocol_fee_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitializeProtocolFeeConfigArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "initialize_redemption_queue",
       "docs": [
         "Adds a RedemptionQueue TLV extension to the vault, enabling FIFO ordering",
@@ -3552,6 +3625,73 @@
       ]
     },
     {
+      "name": "update_protocol_fee_config",
+      "docs": [
+        "Updates the singleton program-level protocol fee recipient config."
+      ],
+      "discriminator": [
+        170,
+        39,
+        4,
+        49,
+        228,
+        105,
+        181,
+        157
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "protocol_fee_config"
+          ]
+        },
+        {
+          "name": "protocol_fee_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "UpdateProtocolFeeConfigArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "update_vault",
       "docs": [
         "Updates the async vault configuration. Can modify paused status",
@@ -3816,6 +3956,19 @@
         64,
         247,
         208
+      ]
+    },
+    {
+      "name": "ProtocolFeeConfig",
+      "discriminator": [
+        81,
+        109,
+        12,
+        19,
+        140,
+        182,
+        21,
+        238
       ]
     },
     {
@@ -4580,6 +4733,18 @@
       }
     },
     {
+      "name": "InitializeProtocolFeeConfigArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "protocol_fee_recipient",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "InitializeTranchesArgs",
       "type": {
         "kind": "struct",
@@ -4776,6 +4941,35 @@
           {
             "name": "token_account_bump",
             "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolFeeConfig",
+      "docs": [
+        "Program-wide protocol fee routing config."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "docs": [
+              "signer allowed to update the program-level protocol fee recipient"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_fee_recipient",
+            "docs": [
+              "owner required for protocol fee token accounts when this config is supplied"
+            ],
+            "type": "pubkey"
           },
           {
             "name": "bump",
@@ -5262,6 +5456,18 @@
           {
             "name": "paused",
             "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdateProtocolFeeConfigArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "protocol_fee_recipient",
+            "type": "pubkey"
           }
         ]
       }

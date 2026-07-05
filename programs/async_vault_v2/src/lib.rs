@@ -103,6 +103,22 @@ pub mod async_vault_v2 {
         instructions::cancel_fee_update::handler(ctx)
     }
 
+    /// Initializes the singleton program-level protocol fee recipient config.
+    pub fn initialize_protocol_fee_config(
+        ctx: Context<InitializeProtocolFeeConfig>,
+        args: InitializeProtocolFeeConfigArgs,
+    ) -> Result<()> {
+        instructions::initialize_protocol_fee_config::handler(ctx, args)
+    }
+
+    /// Updates the singleton program-level protocol fee recipient config.
+    pub fn update_protocol_fee_config(
+        ctx: Context<UpdateProtocolFeeConfig>,
+        args: UpdateProtocolFeeConfigArgs,
+    ) -> Result<()> {
+        instructions::update_protocol_fee_config::handler(ctx, args)
+    }
+
     /// Queues a timelocked mutable non-fee TLV extension update.
     pub fn queue_extension_update(
         ctx: Context<QueueExtensionUpdate>,

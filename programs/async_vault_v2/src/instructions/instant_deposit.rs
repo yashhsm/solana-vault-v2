@@ -7,12 +7,15 @@ use crate::{
     error::AsyncVaultError,
     extensions::{
         fee::processor::get_deposit_fee_and_net,
-        instant_settlement::assert_instant_settlement_enabled,
+        instant_settlement::{
+            assert_instant_settlement_enabled, assert_instant_settlement_safety_guards,
+        },
     },
     state::{Vault, INSTANT_USER_LIMIT_SEED, VAULT_CONFIG_SEED},
     utils::{
-        calculate_shares, load_or_init_instant_settlement_user, split_protocol_fee,
-        validate_asset_mint_extensions_from_acct_info,
+        calculate_shares, load_or_init_instant_settlement_user, resolve_protocol_fee_recipient,
+        split_protocol_fee, validate_asset_mint_extensions_from_acct_info,
+        validate_token_account_owner,
     },
 };
 
@@ -78,7 +81,6 @@ pub struct InstantDeposit<'info> {
     #[account(
         mut,
         token::mint = asset_mint,
-        token::authority = vault.protocol_fee_recipient,
         token::token_program = asset_token_program,
     )]
     pub protocol_fee_recipient_token_account: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
@@ -129,6 +131,10 @@ pub fn handler<'info>(ctx: Context<'info, InstantDeposit<'info>>, amount: u64) -
     );
     let instant_settlement =
         assert_instant_settlement_enabled(&ctx.accounts.vault.to_account_info())?;
+    assert_instant_settlement_safety_guards(
+        ctx.accounts.vault.instant_redemption_fee_bps,
+        ctx.accounts.vault.max_nav_staleness_slots,
+    )?;
     instant_settlement.assert_deposit_amount(amount)?;
     validate_asset_mint_extensions_from_acct_info(&ctx.accounts.asset_mint.to_account_info())?;
     require!(ctx.accounts.vault.nav > 0, AsyncVaultError::NavIsNotSet);
@@ -175,6 +181,7 @@ pub fn handler<'info>(ctx: Context<'info, InstantDeposit<'info>>, amount: u64) -
 
     let (protocol_fee, fee_recipient_fee) =
         split_protocol_fee(deposit_fee, ctx.accounts.vault.protocol_fee_bps)?;
+    let mut remaining = ctx.remaining_accounts.iter().peekable();
     if fee_recipient_fee > 0 {
         let fee_recipient_token_account = ctx
             .accounts
@@ -187,11 +194,20 @@ pub fn handler<'info>(ctx: Context<'info, InstantDeposit<'info>>, amount: u64) -
         )?;
     }
     if protocol_fee > 0 {
+        let (protocol_fee_recipient, consumed_protocol_fee_config) =
+            resolve_protocol_fee_recipient(&ctx.accounts.vault, remaining.peek().copied())?;
+        if consumed_protocol_fee_config {
+            remaining.next();
+        }
         let protocol_fee_recipient_token_account = ctx
             .accounts
             .protocol_fee_recipient_token_account
             .as_ref()
             .ok_or(AsyncVaultError::MissingFeeRecipient)?;
+        validate_token_account_owner(
+            &protocol_fee_recipient_token_account.to_account_info(),
+            &protocol_fee_recipient,
+        )?;
         ctx.accounts.transfer_user_assets_to(
             protocol_fee_recipient_token_account.to_account_info(),
             protocol_fee,

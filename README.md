@@ -8,7 +8,7 @@ Solana Vault V2 is an experimental, MIT-licensed community fork of
 the upstream async vault model, then adds a broader control surface for
 role-separated operations, stricter NAV-based settlement, multi-asset accounting
 scaffolding, venue approval metadata, tranche accounting, instant settlement,
-and vault-level protocol fee splits.
+and protocol fee splits with an optional program-level recipient config.
 
 > Reference implementation only. This fork is unaudited, not deployed to
 > mainnet-beta, and not ready for production funds.
@@ -31,7 +31,7 @@ The current implementation focuses on testable on-chain primitives:
 - constrained SPL token-account position stubs
 - senior/junior tranche accounting and tranche-scoped async requests
 - primary-asset instant deposit/redeem flows
-- vault-level protocol fee recipient splits
+- vault-level protocol fee bps with optional program-level recipient routing
 
 This fork is not an official Solana Foundation release and does not imply
 Solana Foundation endorsement.
@@ -63,6 +63,7 @@ flowchart TD
     Vault --> Venues[VenueEntry and VaultVenue PDAs]
     Vault --> Tranches[TrancheConfig PDA]
     Vault --> Fees[Fee recipients]
+    ProtocolConfig[ProtocolFeeConfig PDA] --> Fees
 
     Assets --> Positions
     Venues --> Positions
@@ -86,6 +87,8 @@ flowchart TD
   timelock queues for delayed config changes.
 - `InstantSettlementUser`: optional per-user instant settlement rolling-limit
   bucket.
+- `ProtocolFeeConfig`: singleton program-level recipient override for protocol
+  fee token accounts. Vault-level `protocol_fee_recipient` remains the fallback.
 
 ### Program Shape
 
@@ -100,15 +103,18 @@ Implemented or partially implemented:
 
 - Phase 0 fork baseline, rename, clients, IDL, program ID, and provenance docs.
 - Phase 1 roles, fresh NAV, NAV bounds, deposit caps, rolling limits,
-  timelocks, fee queues, performance fees, and protocol fee splits.
-- Phase 2 approved secondary-asset PDAs and async secondary deposit/redeem
-  accounting.
+  timelocks, fee queues, performance fees, protocol fee splits, and singleton
+  protocol fee recipient routing.
+- Phase 2 approved secondary-asset PDAs, request unwind paths, and fail-closed
+  secondary approvals until USD-normalized pricing exists.
 - Phase 3 externally managed withdrawal opt-in, venue metadata, per-vault venue
   approvals, and constrained position stubs.
 - Phase 4 tranche config, waterfall accounting, tranche-scoped requests,
-  request bounds, junior-ratio guards, and lane-local FIFO queue counters.
-- Phase 5 primary-asset, non-tranche instant deposit/redeem with optional
-  per-transaction and per-user limits.
+  request bounds, junior-ratio guards, lane-local FIFO queue counters, and
+  tranche/performance-fee incompatibility guards.
+- Phase 5 primary-asset, non-tranche instant deposit/redeem with mandatory NAV
+  staleness plus instant-redemption-fee guards and optional per-transaction and
+  per-user limits.
 
 Not implemented yet:
 
@@ -119,7 +125,7 @@ Not implemented yet:
 - vault-in-vault cycle prevention
 - secondary-asset or tranche-aware instant settlement
 - tranche-aware performance fees and high-water marks
-- program-wide protocol fee governance/configuration
+- program-wide protocol fee bps override and authority-transfer policy
 
 See [docs/SPEC_COVERAGE.md](docs/SPEC_COVERAGE.md) for the requirement-by-
 requirement coverage table.

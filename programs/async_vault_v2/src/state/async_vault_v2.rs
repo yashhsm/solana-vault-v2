@@ -8,6 +8,17 @@ const SECONDS_PER_YEAR: u128 = 31_536_000;
 
 pub const TRANCHE_REQUEST_LIMIT_COUNT: usize = 4;
 
+/// Program-wide protocol fee routing config.
+#[account]
+#[derive(InitSpace)]
+pub struct ProtocolFeeConfig {
+    /// signer allowed to update the program-level protocol fee recipient
+    pub authority: Pubkey,
+    /// owner required for protocol fee token accounts when this config is supplied
+    pub protocol_fee_recipient: Pubkey,
+    pub bump: u8,
+}
+
 /// NAV validation mode configured for a vault.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, InitSpace, PartialEq, Eq)]
 pub enum NavMode {
@@ -543,6 +554,10 @@ impl Vault {
         );
         require!(
             self.nav_mode == NavMode::AuthoritySigned,
+            AsyncVaultError::UnsupportedPhaseConfig
+        );
+        require!(
+            self.tranche_config.is_none() || self.performance_fee_bps == 0,
             AsyncVaultError::UnsupportedPhaseConfig
         );
         if self.protocol_fee_bps > 0 {

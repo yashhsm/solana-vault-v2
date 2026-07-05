@@ -12,8 +12,8 @@ use crate::{
     error::AsyncVaultError,
     extensions::fifo_queue::{read_queue_request_id, QueueRequest},
     state::{
-        InstantSettlementUser, RequestType, TrancheConfig, Vault, INSTANT_USER_LIMIT_SEED,
-        TRANCHE_CONFIG_SEED,
+        InstantSettlementUser, ProtocolFeeConfig, RequestType, TrancheConfig, Vault,
+        INSTANT_USER_LIMIT_SEED, PROTOCOL_FEE_CONFIG_SEED, TRANCHE_CONFIG_SEED,
     },
 };
 
@@ -50,6 +50,39 @@ pub fn split_protocol_fee(total_fee: u64, protocol_fee_bps: u16) -> Result<(u64,
         .checked_sub(protocol_fee)
         .ok_or(AsyncVaultError::ArithmeticError)?;
     Ok((protocol_fee, fee_recipient_fee))
+}
+
+pub fn is_protocol_fee_config_account(info: &AccountInfo) -> bool {
+    let (expected, _) = Pubkey::find_program_address(&[PROTOCOL_FEE_CONFIG_SEED], &crate::ID);
+    *info.key == expected && *info.owner == crate::ID
+}
+
+pub fn protocol_fee_recipient_from_config<'info>(
+    info: &'info AccountInfo<'info>,
+) -> Result<Pubkey> {
+    let (expected, expected_bump) =
+        Pubkey::find_program_address(&[PROTOCOL_FEE_CONFIG_SEED], &crate::ID);
+    require_keys_eq!(*info.key, expected, AsyncVaultError::InvalidVault);
+    let config: Account<ProtocolFeeConfig> = Account::try_from(info)?;
+    require!(config.bump == expected_bump, AsyncVaultError::InvalidVault);
+    require!(
+        config.protocol_fee_recipient != Pubkey::default(),
+        AsyncVaultError::InvalidFeeRecipient
+    );
+    Ok(config.protocol_fee_recipient)
+}
+
+pub fn resolve_protocol_fee_recipient<'info>(
+    vault: &Vault,
+    maybe_config_info: Option<&'info AccountInfo<'info>>,
+) -> Result<(Pubkey, bool)> {
+    if let Some(config_info) = maybe_config_info {
+        if is_protocol_fee_config_account(config_info) {
+            return Ok((protocol_fee_recipient_from_config(config_info)?, true));
+        }
+    }
+
+    Ok((vault.protocol_fee_recipient, false))
 }
 
 pub fn validate_request_share_mint<'info>(

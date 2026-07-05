@@ -2,9 +2,9 @@ use anchor_spl::{associated_token::get_associated_token_address_with_program_id,
 use async_vault_v2_client::{
     lite::SendTransaction, sdk::program_id, ApproveRequestBuilder, CreateDepositRequestBuilder,
     CreateRedeemRequestBuilder, FeeType, InitializeDepositFeeBuilder,
-    InitializeVaultBuilder as InitializeAsyncVaultBuilder, InitializeWithdrawalFeeBuilder, Request,
-    RequestArgs, RequestState, UpdateVaultBuilder as UpdateVaultAsyncBuilder,
-    UpdateVaultNavBuilder, Vault,
+    InitializeProtocolFeeConfigBuilder, InitializeVaultBuilder as InitializeAsyncVaultBuilder,
+    InitializeWithdrawalFeeBuilder, Request, RequestArgs, RequestState,
+    UpdateVaultBuilder as UpdateVaultAsyncBuilder, UpdateVaultNavBuilder, Vault,
 };
 use litesvm::LiteSVM;
 use solana_sdk::{
@@ -25,6 +25,11 @@ use crate::{
 
 // NAV: 200_000_000_000 with 9 decimals → shares = assets/200, assets = shares*200
 const NAV: u128 = 200_000_000_000;
+const PROTOCOL_FEE_CONFIG_SEED: &[u8] = b"protocol_fee_config";
+
+fn protocol_fee_config_pda() -> Pubkey {
+    Pubkey::find_program_address(&[PROTOCOL_FEE_CONFIG_SEED], &program_id()).0
+}
 
 #[allow(clippy::too_many_arguments)]
 fn setup_with_fees(
@@ -126,6 +131,7 @@ fn approve_request_with_fee_recipient(
     reserve_pubkey: Pubkey,
     pending_vault_pubkey: Pubkey,
     fee_recipient_ata: Option<Pubkey>,
+    protocol_fee_config: Option<Pubkey>,
     protocol_fee_recipient_ata: Option<Pubkey>,
 ) -> Result<litesvm::types::TransactionMetadata, litesvm::types::FailedTransactionMetadata> {
     let (owner, request_type, amount, created_at, nav_update_version) =
@@ -148,6 +154,9 @@ fn approve_request_with_fee_recipient(
 
     if let Some(ata) = fee_recipient_ata {
         builder.add_remaining_account(AccountMeta::new(ata, false));
+    }
+    if let Some(config) = protocol_fee_config {
+        builder.add_remaining_account(AccountMeta::new_readonly(config, false));
     }
     if let Some(ata) = protocol_fee_recipient_ata {
         builder.add_remaining_account(AccountMeta::new(ata, false));
@@ -241,6 +250,7 @@ fn test_approve_deposit_with_fee(
         reserve_pubkey,
         pending_vault_pubkey,
         Some(fee_recipient_ata),
+        None,
         None,
     )
     .expect("approve_request with deposit fee should succeed");
@@ -354,6 +364,7 @@ fn test_approve_deposit_protocol_fee_splits_deposit_fee() {
         reserve_pubkey,
         pending_vault_pubkey,
         Some(fee_recipient_ata),
+        None,
         Some(protocol_fee_recipient_ata),
     )
     .expect("approve_request with protocol deposit fee should succeed");
@@ -368,6 +379,114 @@ fn test_approve_deposit_protocol_fee_splits_deposit_fee() {
     );
     let vault_after = Vault::from_bytes(svm.get_account(&vault_pubkey).unwrap().data()).unwrap();
     assert_eq!(vault_after.total_asset_balance, 990_000);
+}
+
+#[test]
+fn test_approve_deposit_protocol_fee_uses_program_config_recipient_when_supplied() {
+    let (
+        mut svm,
+        authority,
+        _mint_authority,
+        asset_mint,
+        share_mint,
+        user,
+        reserve_pubkey,
+        vault_pubkey,
+        pending_vault_pubkey,
+        fee_recipient_ata,
+        _user_share_account,
+    ) = setup_with_fees(Some(FeeType::Percentage { bps: 100 }), None);
+
+    let vault_protocol_fee_recipient = Keypair::new();
+    let configured_protocol_fee_recipient = Keypair::new();
+    svm.airdrop(&vault_protocol_fee_recipient.pubkey(), 1_000_000_000)
+        .unwrap();
+    svm.airdrop(&configured_protocol_fee_recipient.pubkey(), 1_000_000_000)
+        .unwrap();
+    let vault_protocol_fee_recipient_ata = create_ata(
+        &mut svm,
+        &vault_protocol_fee_recipient,
+        &asset_mint.pubkey(),
+        &token::ID,
+    );
+    let configured_protocol_fee_recipient_ata = create_ata(
+        &mut svm,
+        &configured_protocol_fee_recipient,
+        &asset_mint.pubkey(),
+        &token::ID,
+    );
+    configure_protocol_fee(
+        &mut svm,
+        &authority,
+        share_mint.pubkey(),
+        vault_pubkey,
+        vault_protocol_fee_recipient.pubkey(),
+        2_500,
+    );
+
+    let protocol_fee_config = protocol_fee_config_pda();
+    InitializeProtocolFeeConfigBuilder::new()
+        .payer(authority.pubkey())
+        .authority(authority.pubkey())
+        .protocol_fee_config(protocol_fee_config)
+        .protocol_fee_recipient(configured_protocol_fee_recipient.pubkey())
+        .instruction()
+        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
+        .expect("initialize protocol fee config should succeed");
+
+    let user_asset_account = get_associated_token_address_with_program_id(
+        &user.pubkey(),
+        &asset_mint.pubkey(),
+        &token::ID,
+    );
+    let request_keypair = Keypair::new();
+    CreateDepositRequestBuilder::new()
+        .user(user.pubkey())
+        .asset_mint(asset_mint.pubkey())
+        .share_mint(share_mint.pubkey())
+        .request(request_keypair.pubkey())
+        .vault(vault_pubkey)
+        .user_token_account(user_asset_account)
+        .pending_vault(pending_vault_pubkey)
+        .asset_token_program(spl_token::ID)
+        .args(RequestArgs {
+            amount: 1_000_000,
+            operator: None,
+        })
+        .instruction()
+        .send_transaction(&mut svm, &user.pubkey(), &[&user, &request_keypair])
+        .expect("create deposit request should succeed");
+
+    approve_request_with_fee_recipient(
+        &mut svm,
+        &authority,
+        vault_pubkey,
+        request_keypair.pubkey(),
+        asset_mint.pubkey(),
+        share_mint.pubkey(),
+        reserve_pubkey,
+        pending_vault_pubkey,
+        Some(fee_recipient_ata),
+        Some(protocol_fee_config),
+        Some(configured_protocol_fee_recipient_ata),
+    )
+    .expect("approve_request should use program-level protocol fee recipient");
+
+    assert_eq!(
+        get_token_account_amount(&svm.get_account(&fee_recipient_ata).unwrap()),
+        7_500
+    );
+    assert_eq!(
+        get_token_account_amount(
+            &svm.get_account(&configured_protocol_fee_recipient_ata)
+                .unwrap()
+        ),
+        2_500
+    );
+    assert_eq!(
+        get_token_account_amount(&svm.get_account(&vault_protocol_fee_recipient_ata).unwrap()),
+        0
+    );
 }
 
 #[test]
@@ -445,6 +564,7 @@ fn test_approve_deposit_protocol_fee_rejects_wrong_protocol_recipient_owner() {
         reserve_pubkey,
         pending_vault_pubkey,
         Some(fee_recipient_ata),
+        None,
         Some(wrong_protocol_fee_recipient_ata),
     )
     .unwrap_err();
@@ -537,6 +657,7 @@ fn test_approve_redeem_with_fee(
         reserve_pubkey,
         pending_vault_pubkey,
         Some(fee_recipient_ata),
+        None,
         None,
     )
     .expect("approve_request with withdrawal fee should succeed");
@@ -655,6 +776,7 @@ fn test_approve_redeem_protocol_fee_splits_withdrawal_fee() {
         reserve_pubkey,
         pending_vault_pubkey,
         Some(fee_recipient_ata),
+        None,
         Some(protocol_fee_recipient_ata),
     )
     .expect("approve_request with protocol withdrawal fee should succeed");
@@ -741,6 +863,7 @@ fn test_redeem_rolling_limit_counts_gross_assets_before_withdrawal_fee() {
         pending_vault_pubkey,
         Some(fee_recipient_ata),
         None,
+        None,
     )
     .unwrap_err();
 
@@ -798,6 +921,7 @@ fn test_approve_deposit_no_fee_no_remaining_account() {
         share_mint.pubkey(),
         reserve_pubkey,
         pending_vault_pubkey,
+        None,
         None,
         None,
     )
