@@ -35,6 +35,31 @@ The current implementation focuses on testable on-chain primitives:
 - primary-asset instant deposit/redeem flows
 - vault-level protocol fee bps with optional program-level recipient routing
 
+## Use Cases
+
+The program is a shell for pooled capital: it mints shares, settles
+deposits/redemptions against NAV, and enforces roles, caps, and pauses. Strategy
+logic lives off-chain and drives the vault through its operator roles. Every
+vault is exactly one of four shells, and the program's own constraints keep them
+distinct — instant settlement is single-asset and non-tranche, while tranches
+and secondary assets are async-only. Together they cover the space of what can
+be built today.
+
+- **Instant single-asset vaults** — deposit and redeem on demand against current
+  NAV, backed by a liquid reserve. _Cash sweeps, stablecoin savings, treasury
+  reserves._
+- **Async managed funds** — entries and exits settle as requests against a
+  freshly signed NAV, so the vault can hold illiquid or external-venue positions.
+  _Lending/LP funds, delta-neutral perp carry, systematic trading,
+  prediction-market strategies._
+- **Tranched vaults** — one strategy split into senior and junior shares; a
+  waterfall routes first losses to junior and target gains to senior.
+  _Principal-protected notes, first-loss-buffered yield, insurance-buffer
+  structures._
+- **Multi-asset vaults** — several approved deposit assets accounted per asset
+  under one vault (NAV signed by the operator, since pricing is off-chain).
+  _Multi-stablecoin cash, blue-chip baskets, index-style intake._
+
 ## Architecture
 
 At a high level, V2 is still an Anchor program centered on one `Vault` PDA per
