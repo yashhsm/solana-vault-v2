@@ -38,33 +38,35 @@ The current implementation focuses on testable on-chain primitives:
 ## Use Cases
 
 The program issues shares, settles deposits/redemptions against NAV, and enforces
-roles, caps, and pauses; strategy logic runs off-chain through the operator roles.
-Every vault takes one of four shells:
+roles, caps, and pauses; strategy logic runs off-chain through the operator roles,
+and NAV is operator-signed. Every vault takes one of three settleable shells:
 
 **Instant single-asset** — deposit and redeem on demand against current NAV,
-backed by a liquid reserve.
+backed by a liquid reserve. _Like an on-chain money-market fund._
 
-- **USDC Cash Vault** — park stablecoins, earn lending yield, exit anytime.
-- **Treasury Reserve** — conservative idle-balance sweep for apps and DAOs.
+- **Cash / yield sweep** — park stablecoins, earn lending yield, exit anytime.
+- **Treasury reserve** — conservative idle-balance sweep for apps and DAOs.
 
 **Async managed fund** — entries and exits settle as requests against a freshly
-signed NAV, so the vault can hold illiquid or external-venue positions.
+signed NAV, so the vault can hold illiquid or external-venue positions (single
+deposit asset). _Like an actively managed fund or ETF._
 
-- **Yield Router** — rotates deposits into the best approved lending/LP venue.
-- **Delta-Neutral Carry** — hedged perp/spot positions harvesting funding.
-- **Prediction-Market Fund** — a curated basket of event trades or CLOB market making.
+- **Yield router** — rotates deposits into the best approved lending/LP venue.
+- **Delta-neutral carry** — hedged perp/spot positions harvesting funding.
+- **Blue-chip index** — one deposit, exposure to a rebalanced basket of majors.
+- **Prediction-market fund** — a curated basket of event positions.
 
 **Tranched (senior / junior)** — one strategy split into two risk layers; a
-waterfall sends first losses to junior and target gains to senior.
+waterfall sends first losses to junior and target gains to senior. _Like a
+structured note or a provision-fund-backed yield product._
 
-- **Protected Yield Note** — senior targets a steady return; junior absorbs first losses.
-- **First-Loss Boost** — junior takes the downside for leveraged upside.
+- **Protected yield note** — senior targets a steady return; junior absorbs first losses.
+- **First-loss boost** — junior takes the downside for leveraged upside.
 
-**Multi-asset** — accepts several approved deposit assets, accounted per asset
-(NAV signed off-chain, since pricing isn't on-chain).
-
-- **Multi-Stablecoin Cash** — one vault, many stables, unified shares.
-- **Blue-Chip Index** — a rebalanced basket of ecosystem majors.
+Multi-asset deposits, oracle-proven NAV, and vaults that call other protocols
+directly are not settleable yet. See [Use Cases](docs/USE_CASES.md) for real venue
+mappings, popular-instrument analogues, and designs drawn from financial history —
+every entry checked against what the program can settle today.
 
 ## Architecture
 
@@ -191,6 +193,7 @@ cargo test -p integration-tests
 ## Documentation
 
 - [Build Report](REPORT.md)
+- [Use Cases](docs/USE_CASES.md)
 - [Design Decisions](DESIGN_DECISIONS.md)
 - [Account Layout](docs/ACCOUNTS.md)
 - [Integration Mapping](docs/INTEGRATION.md)
