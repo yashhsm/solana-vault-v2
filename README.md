@@ -3,22 +3,24 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Built with Anchor](https://img.shields.io/badge/Built%20with-Anchor-blue)](https://www.anchor-lang.com/)
 
-Solana Vault V2 is an experimental, MIT-licensed community fork of
-[solana-foundation/vault](https://github.com/solana-foundation/vault). It keeps
-the upstream async vault model, then adds a broader control surface for
-role-separated operations, stricter NAV-based settlement, multi-asset accounting
-scaffolding, venue approval metadata, tranche accounting, instant settlement,
-and protocol fee splits with an optional program-level recipient config.
+Solana Vault V2 is an experimental, MIT-licensed async vault program for Solana,
+built by SendAI. It implements a tokenized vault with a NAV-based async
+deposit/redeem lifecycle and layers on the control surface a real fund needs:
+role-separated operations, stricter NAV-based settlement, multi-asset
+accounting, venue approval metadata, tranche accounting, instant settlement, and
+protocol fee routing with an optional program-level recipient config.
 
-> Reference implementation only. This fork is unaudited, not deployed to
-> mainnet-beta, and not ready for production funds.
+> Reference implementation only. Unaudited, not deployed to mainnet-beta, and
+> not ready for production funds.
 
-## Why This Exists
+## What It Is
 
-The upstream Solana Foundation vault program provides a compact single-asset
-async vault with Token-2022 compatibility, TLV extensions, request queues,
-deposit/withdrawal fees, and authority-controlled NAV updates. V2 explores what
-a more operational vault stack could look like while preserving that base model.
+At its core, V2 is an operational async-vault stack. Users subscribe and redeem
+against a net asset value that operators update, while capital is managed off
+the hot path. It starts from a compact async-vault model — Token-2022 support,
+TLV extensions, request queues, deposit/withdrawal fees, and authority-signed
+NAV updates — and extends it into a role-separated, multi-asset, tranche-aware
+system.
 
 The current implementation focuses on testable on-chain primitives:
 
@@ -32,9 +34,6 @@ The current implementation focuses on testable on-chain primitives:
 - senior/junior tranche accounting and tranche-scoped async requests
 - primary-asset instant deposit/redeem flows
 - vault-level protocol fee bps with optional program-level recipient routing
-
-This fork is not an official Solana Foundation release and does not imply
-Solana Foundation endorsement.
 
 ## Architecture
 
@@ -187,14 +186,11 @@ and [REPORT.md](REPORT.md) for details and known gaps.
 
 ## Attribution
 
-This repository is forked from
-[solana-foundation/vault](https://github.com/solana-foundation/vault) at commit
-`c667cf8079d90f79fc0daf32d332a3693b37e6c6`.
-
-The upstream Cantina APEX report is copied at
-[audits/apex-scan-june-22-2026.pdf](audits/apex-scan-june-22-2026.pdf), and the
-audited-through upstream commit is
-`ce2b5483de53cd015efbbdea70ecec75d976bb08`.
+Built by SendAI. Originally derived from
+[solana-foundation/vault](https://github.com/solana-foundation/vault) (MIT); see
+[NOTICE](NOTICE) for the upstream commit and license details. The V2 program is
+substantially new work and is not covered by the upstream audit — see
+[AUDIT_STATUS.md](AUDIT_STATUS.md).
 
 ## License
 
