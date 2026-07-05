@@ -63,6 +63,16 @@ structured note or a provision-fund-backed yield product._
 - **Protected yield note** — senior targets a steady return; junior absorbs first losses.
 - **First-loss boost** — junior takes the downside for leveraged upside.
 
+Billions already sit in products built on exactly these shells. At the vault layer
+each is a deposit → shares → NAV → redeem wrapper this program gives you in a few
+configs — the strategy is what the operator plugs in behind it:
+
+- **Kamino** (~$3B TVL) — Solana lending → instant / async yield vault
+- **Jupiter JLP** (~$2B TVL) — perps liquidity, real yield → async managed fund
+- **Pendle** (~$5B TVL) — splits yield into fixed and variable claims → tranche
+
+_TVL approximate, mid-2026; these are strategy analogues, not endorsements._
+
 Multi-asset deposits, oracle-proven NAV, and vaults that call other protocols
 directly are not settleable yet. See [Use Cases](docs/USE_CASES.md) for real venue
 mappings, popular-instrument analogues, and designs drawn from financial history —
