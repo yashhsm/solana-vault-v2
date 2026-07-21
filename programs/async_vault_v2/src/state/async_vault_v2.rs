@@ -289,6 +289,20 @@ pub struct VaultVenue {
     pub bump: u8,
 }
 
+/// Optional per-strategist Merkle policy for vault-signed venue actions.
+#[account]
+#[derive(InitSpace)]
+pub struct StrategyPolicy {
+    pub vault: Pubkey,
+    pub strategist: Pubkey,
+    pub merkle_root: [u8; 32],
+    pub version: u64,
+    pub paused: bool,
+    /// Reentrancy guard set only for the duration of a managed CPI.
+    pub executing: bool,
+    pub bump: u8,
+}
+
 /// Per-asset deployed-position ledger for an approved venue.
 #[account]
 #[derive(InitSpace)]
@@ -764,6 +778,24 @@ impl VenueEntry {
         );
         Ok(())
     }
+
+    pub fn assert_instruction_allowed(&self, instruction_data: &[u8]) -> Result<()> {
+        let discriminator = instruction_data
+            .get(..8)
+            .ok_or(AsyncVaultError::InvalidVenueInstruction)?;
+        let active_len = usize::from(self.allowed_discriminator_count)
+            .checked_mul(8)
+            .ok_or(AsyncVaultError::ArithmeticError)?;
+        let allowed = self
+            .allowed_discriminators
+            .get(..active_len)
+            .ok_or(AsyncVaultError::InvalidVenueDiscriminatorCount)?;
+        require!(
+            allowed.chunks_exact(8).any(|entry| entry == discriminator),
+            AsyncVaultError::VenueInstructionNotAllowed
+        );
+        Ok(())
+    }
 }
 
 impl VaultVenue {
@@ -785,6 +817,32 @@ impl VaultVenue {
             self.position_count == 0,
             AsyncVaultError::VenuePositionNonZero
         );
+        Ok(())
+    }
+}
+
+impl StrategyPolicy {
+    pub fn assert_bound(&self, vault: Pubkey, strategist: Pubkey) -> Result<()> {
+        require_keys_eq!(self.vault, vault, AsyncVaultError::InvalidVault);
+        require_keys_eq!(
+            self.strategist,
+            strategist,
+            AsyncVaultError::InvalidStrategyPolicy
+        );
+        Ok(())
+    }
+
+    pub fn assert_active(&self) -> Result<()> {
+        require!(!self.paused, AsyncVaultError::StrategyPolicyPaused);
+        require!(
+            self.merkle_root != [0_u8; 32],
+            AsyncVaultError::EmptyMerkleRoot
+        );
+        self.assert_not_executing()
+    }
+
+    pub fn assert_not_executing(&self) -> Result<()> {
+        require!(!self.executing, AsyncVaultError::ReentrantStrategyCall);
         Ok(())
     }
 }

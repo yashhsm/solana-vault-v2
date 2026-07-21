@@ -29,6 +29,7 @@ solana-rpc-client = { version = "3", optional = true }
 anchor-lang = { workspace = true, optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 solana-sdk = { workspace = true, optional = true }
+solana-sha256-hasher.workspace = true
 num-derive.workspace = true
 num-traits.workspace = true
 thiserror.workspace = true

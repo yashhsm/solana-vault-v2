@@ -663,6 +663,37 @@
       "args": []
     },
     {
+      "name": "cancel_strategy_policy_update",
+      "docs": [
+        "Cancels a queued policy update. Requires the current curator."
+      ],
+      "discriminator": [
+        90,
+        78,
+        199,
+        177,
+        58,
+        162,
+        197,
+        204
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault"
+        },
+        {
+          "name": "pending_update",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "cancel_vault_update",
       "docs": [
         "Cancels a queued vault configuration update. Requires current curator."
@@ -801,6 +832,70 @@
             "Token program for share mint operations — only required for Deposit"
           ],
           "optional": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_strategy_policy",
+      "docs": [
+        "Closes a policy and returns its rent to the curator."
+      ],
+      "discriminator": [
+        124,
+        43,
+        153,
+        89,
+        225,
+        140,
+        71,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault"
+        },
+        {
+          "name": "strategy_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  97,
+                  116,
+                  101,
+                  103,
+                  121,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "strategy_policy.strategist",
+                "account": "StrategyPolicy"
+              }
+            ]
+          }
         }
       ],
       "args": []
@@ -1472,6 +1567,74 @@
       "args": []
     },
     {
+      "name": "execute_strategy_policy_update",
+      "docs": [
+        "Applies a queued policy update after its ETA when its version remains current."
+      ],
+      "discriminator": [
+        87,
+        140,
+        233,
+        201,
+        14,
+        96,
+        180,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "executor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault"
+        },
+        {
+          "name": "strategy_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  97,
+                  116,
+                  101,
+                  103,
+                  121,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "strategy_policy.strategist",
+                "account": "StrategyPolicy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_update",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "execute_vault_update",
       "docs": [
         "Executes a queued vault configuration update after its eta slot."
@@ -1928,6 +2091,82 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "initialize_strategy_policy",
+      "docs": [
+        "Creates a disabled Merkle capability policy for a manager or hot manager."
+      ],
+      "discriminator": [
+        25,
+        5,
+        241,
+        150,
+        69,
+        100,
+        10,
+        116
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault"
+        },
+        {
+          "name": "strategy_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  97,
+                  116,
+                  101,
+                  103,
+                  121,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "arg",
+                "path": "strategist"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "strategist",
+          "type": "pubkey"
+        }
+      ]
     },
     {
       "name": "initialize_subscription_queue",
@@ -2436,6 +2675,200 @@
       ]
     },
     {
+      "name": "manage_vault_with_merkle_verification",
+      "docs": [
+        "Verifies a strategist capability proof before signing one approved venue CPI."
+      ],
+      "discriminator": [
+        248,
+        236,
+        44,
+        207,
+        167,
+        195,
+        77,
+        244
+      ],
+      "accounts": [
+        {
+          "name": "strategist",
+          "signer": true
+        },
+        {
+          "name": "share_mint",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "share_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "venue_entry"
+        },
+        {
+          "name": "vault_venue",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "strategy_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  97,
+                  116,
+                  101,
+                  103,
+                  121,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "strategist"
+              }
+            ]
+          }
+        },
+        {
+          "name": "target_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "ManageVaultWithMerkleVerificationArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "pause_strategy_policy",
+      "docs": [
+        "Immediately pauses a policy. The curator or breaker may invoke this path."
+      ],
+      "discriminator": [
+        206,
+        224,
+        94,
+        14,
+        241,
+        27,
+        135,
+        187
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault"
+        },
+        {
+          "name": "strategy_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  97,
+                  116,
+                  101,
+                  103,
+                  121,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "strategy_policy.strategist",
+                "account": "StrategyPolicy"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "pause_vault",
       "docs": [
         "Pauses the vault using the breaker role. Breaker cannot unpause."
@@ -2729,6 +3162,91 @@
           "type": {
             "defined": {
               "name": "FeeUpdateArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "queue_strategy_policy_update",
+      "docs": [
+        "Queues a policy root update under the vault's configuration timelock."
+      ],
+      "discriminator": [
+        29,
+        179,
+        82,
+        94,
+        122,
+        156,
+        159,
+        194
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault"
+        },
+        {
+          "name": "strategy_policy",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  97,
+                  116,
+                  101,
+                  103,
+                  121,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "strategy_policy.strategist",
+                "account": "StrategyPolicy"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_update",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "StrategyPolicyUpdateArgs"
             }
           }
         }
@@ -3701,6 +4219,78 @@
       ]
     },
     {
+      "name": "update_strategy_policy",
+      "docs": [
+        "Applies a policy root immediately when the vault has no configured timelock."
+      ],
+      "discriminator": [
+        8,
+        17,
+        119,
+        152,
+        194,
+        249,
+        135,
+        242
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault"
+        },
+        {
+          "name": "strategy_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  97,
+                  116,
+                  101,
+                  103,
+                  121,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "strategy_policy.strategist",
+                "account": "StrategyPolicy"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "StrategyPolicyUpdateArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "update_vault",
       "docs": [
         "Updates the async vault configuration. Can modify paused status",
@@ -3942,6 +4532,19 @@
       ]
     },
     {
+      "name": "PendingStrategyPolicyUpdate",
+      "discriminator": [
+        22,
+        178,
+        144,
+        129,
+        25,
+        2,
+        206,
+        3
+      ]
+    },
+    {
       "name": "PendingVaultUpdate",
       "discriminator": [
         50,
@@ -3991,6 +4594,19 @@
         115,
         39,
         71
+      ]
+    },
+    {
+      "name": "StrategyPolicy",
+      "discriminator": [
+        81,
+        63,
+        0,
+        6,
+        28,
+        182,
+        122,
+        182
       ]
     },
     {
@@ -4056,6 +4672,73 @@
         211,
         109,
         50
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "StrategyActionExecuted",
+      "discriminator": [
+        4,
+        15,
+        222,
+        185,
+        56,
+        155,
+        201,
+        232
+      ]
+    },
+    {
+      "name": "StrategyPolicyInitialized",
+      "discriminator": [
+        132,
+        48,
+        164,
+        45,
+        215,
+        60,
+        108,
+        213
+      ]
+    },
+    {
+      "name": "StrategyPolicyPaused",
+      "discriminator": [
+        176,
+        50,
+        184,
+        225,
+        238,
+        186,
+        133,
+        215
+      ]
+    },
+    {
+      "name": "StrategyPolicyUpdateQueued",
+      "discriminator": [
+        186,
+        195,
+        120,
+        216,
+        160,
+        2,
+        230,
+        76
+      ]
+    },
+    {
+      "name": "StrategyPolicyUpdated",
+      "discriminator": [
+        173,
+        158,
+        166,
+        197,
+        109,
+        209,
+        186,
+        189
       ]
     }
   ],
@@ -4454,6 +5137,101 @@
       "code": 6078,
       "name": "InvalidVenueRecipient",
       "msg": "Withdraw recipient authority does not match the approved venue recipient."
+    },
+    {
+      "code": 6079,
+      "name": "InvalidStrategyPolicy",
+      "msg": "Strategy policy account is invalid."
+    },
+    {
+      "code": 6080,
+      "name": "StrategyPolicyPaused",
+      "msg": "Strategy policy is paused."
+    },
+    {
+      "code": 6081,
+      "name": "EmptyMerkleRoot",
+      "msg": "Strategy policy root cannot be zero when the policy is active."
+    },
+    {
+      "code": 6082,
+      "name": "MerkleProofTooDeep",
+      "msg": "Merkle proof exceeds the configured maximum depth."
+    },
+    {
+      "code": 6083,
+      "name": "MerkleProofInvalid",
+      "msg": "Merkle proof does not match the configured policy root."
+    },
+    {
+      "code": 6084,
+      "name": "StaleStrategyPolicyVersion",
+      "msg": "Strategy policy version is stale."
+    },
+    {
+      "code": 6085,
+      "name": "InvalidPolicyOperator",
+      "msg": "Strategy policy operator is invalid."
+    },
+    {
+      "code": 6086,
+      "name": "PolicyOperatorOutOfBounds",
+      "msg": "Strategy policy operator is out of bounds."
+    },
+    {
+      "code": 6087,
+      "name": "DuplicateManagerLimitOperator",
+      "msg": "Only one manager-limit amount operator is allowed."
+    },
+    {
+      "code": 6088,
+      "name": "InvalidVenueInstruction",
+      "msg": "Venue instruction data is invalid."
+    },
+    {
+      "code": 6089,
+      "name": "VenueInstructionNotAllowed",
+      "msg": "Venue instruction discriminator is not allowed."
+    },
+    {
+      "code": 6090,
+      "name": "TargetProgramMismatch",
+      "msg": "Target program does not match the approved venue."
+    },
+    {
+      "code": 6091,
+      "name": "TargetProgramNotExecutable",
+      "msg": "Target program account is not executable."
+    },
+    {
+      "code": 6092,
+      "name": "UnsafeTargetProgram",
+      "msg": "The vault program cannot manage itself through the strategy policy."
+    },
+    {
+      "code": 6093,
+      "name": "TooManyCpiAccounts",
+      "msg": "Managed CPI has too many accounts."
+    },
+    {
+      "code": 6094,
+      "name": "InstructionDataTooLarge",
+      "msg": "Managed instruction data is too large."
+    },
+    {
+      "code": 6095,
+      "name": "ShareSupplyChanged",
+      "msg": "Share supply changed during a managed strategy call."
+    },
+    {
+      "code": 6096,
+      "name": "ReentrantStrategyCall",
+      "msg": "Reentrant strategy calls are not allowed."
+    },
+    {
+      "code": 6097,
+      "name": "PolicyIngestionLimitExceeded",
+      "msg": "Policy instruction ingestion exceeds the configured byte limit."
     }
   ],
   "types": [
@@ -4817,6 +5595,43 @@
       }
     },
     {
+      "name": "ManageVaultWithMerkleVerificationArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "policy_version",
+            "type": "u64"
+          },
+          {
+            "name": "instruction_data",
+            "type": "bytes"
+          },
+          {
+            "name": "operators",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "PolicyOperator"
+                }
+              }
+            }
+          },
+          {
+            "name": "proof",
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "NavMode",
       "docs": [
         "NAV validation mode configured for a vault."
@@ -4901,6 +5716,46 @@
       }
     },
     {
+      "name": "PendingStrategyPolicyUpdate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategy_policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "queued_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "created_slot",
+            "type": "u64"
+          },
+          {
+            "name": "eta_slot",
+            "type": "u64"
+          },
+          {
+            "name": "expected_version",
+            "type": "u64"
+          },
+          {
+            "name": "args",
+            "type": {
+              "defined": {
+                "name": "StrategyPolicyUpdateArgs"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "PendingVaultUpdate",
       "type": {
         "kind": "struct",
@@ -4928,6 +5783,45 @@
                 "name": "UpdateVaultArgs"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PolicyOperator",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "IngestInstruction",
+            "fields": [
+              {
+                "name": "offset",
+                "type": "u16"
+              },
+              {
+                "name": "length",
+                "type": "u16"
+              }
+            ]
+          },
+          {
+            "name": "IngestAccount",
+            "fields": [
+              {
+                "name": "index",
+                "type": "u8"
+              }
+            ]
+          },
+          {
+            "name": "ManagerLimitAmount",
+            "fields": [
+              {
+                "name": "offset",
+                "type": "u16"
+              }
+            ]
           }
         ]
       }
@@ -5252,6 +6146,260 @@
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StrategyActionExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategy_policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategist",
+            "type": "pubkey"
+          },
+          {
+            "name": "venue_entry",
+            "type": "pubkey"
+          },
+          {
+            "name": "target_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "policy_version",
+            "type": "u64"
+          },
+          {
+            "name": "leaf",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "cpi_account_count",
+            "type": "u16"
+          },
+          {
+            "name": "manager_limit_amount",
+            "type": {
+              "option": "u64"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "StrategyPolicy",
+      "docs": [
+        "Optional per-strategist Merkle policy for vault-signed venue actions."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategist",
+            "type": "pubkey"
+          },
+          {
+            "name": "merkle_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "version",
+            "type": "u64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "executing",
+            "docs": [
+              "Reentrancy guard set only for the duration of a managed CPI."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StrategyPolicyInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategist",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategy_policy",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StrategyPolicyPaused",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategy_policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategist",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "version",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StrategyPolicyUpdateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "merkle_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StrategyPolicyUpdateQueued",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategy_policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_update",
+            "type": "pubkey"
+          },
+          {
+            "name": "expected_version",
+            "type": "u64"
+          },
+          {
+            "name": "eta_slot",
+            "type": "u64"
+          },
+          {
+            "name": "merkle_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StrategyPolicyUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategy_policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategist",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "new_root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "version",
+            "type": "u64"
+          },
           {
             "name": "paused",
             "type": "bool"

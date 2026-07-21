@@ -13,7 +13,7 @@
         "format:check": "prettier --check .",
         "lint": "eslint scripts/*.ts clients/typescript/src/index.ts",
         "lint:fix": "eslint scripts/*.ts clients/typescript/src/index.ts --fix",
-        "typecheck": "cd clients/typescript && tsc --noEmit"
+        "typecheck": "cd clients/typescript && tsc --noEmit && cd ../.. && tsx ./scripts/verify-merkle-strategy-policy.ts"
     },
     "devDependencies": {
         "@codama/nodes-from-anchor": "^1.5.0",

@@ -4,6 +4,7 @@
 use anchor_lang::prelude::*;
 
 pub mod error;
+pub mod events;
 pub mod extensions;
 pub mod instructions;
 pub mod state;
@@ -171,6 +172,58 @@ pub mod async_vault_v2 {
     /// Removes a zero-position venue approval from a vault.
     pub fn remove_vault_venue(ctx: Context<RemoveVaultVenue>) -> Result<()> {
         instructions::remove_vault_venue::handler(ctx)
+    }
+
+    /// Creates a disabled Merkle capability policy for a manager or hot manager.
+    pub fn initialize_strategy_policy(
+        ctx: Context<InitializeStrategyPolicy>,
+        strategist: Pubkey,
+    ) -> Result<()> {
+        instructions::initialize_strategy_policy::handler(ctx, strategist)
+    }
+
+    /// Applies a policy root immediately when the vault has no configured timelock.
+    pub fn update_strategy_policy(
+        ctx: Context<UpdateStrategyPolicy>,
+        args: StrategyPolicyUpdateArgs,
+    ) -> Result<()> {
+        instructions::update_strategy_policy::handler(ctx, args)
+    }
+
+    /// Queues a policy root update under the vault's configuration timelock.
+    pub fn queue_strategy_policy_update(
+        ctx: Context<QueueStrategyPolicyUpdate>,
+        args: StrategyPolicyUpdateArgs,
+    ) -> Result<()> {
+        instructions::queue_strategy_policy_update::handler(ctx, args)
+    }
+
+    /// Applies a queued policy update after its ETA when its version remains current.
+    pub fn execute_strategy_policy_update(ctx: Context<ExecuteStrategyPolicyUpdate>) -> Result<()> {
+        instructions::execute_strategy_policy_update::handler(ctx)
+    }
+
+    /// Cancels a queued policy update. Requires the current curator.
+    pub fn cancel_strategy_policy_update(ctx: Context<CancelStrategyPolicyUpdate>) -> Result<()> {
+        instructions::cancel_strategy_policy_update::handler(ctx)
+    }
+
+    /// Immediately pauses a policy. The curator or breaker may invoke this path.
+    pub fn pause_strategy_policy(ctx: Context<PauseStrategyPolicy>) -> Result<()> {
+        instructions::pause_strategy_policy::handler(ctx)
+    }
+
+    /// Closes a policy and returns its rent to the curator.
+    pub fn close_strategy_policy(ctx: Context<CloseStrategyPolicy>) -> Result<()> {
+        instructions::close_strategy_policy::handler(ctx)
+    }
+
+    /// Verifies a strategist capability proof before signing one approved venue CPI.
+    pub fn manage_vault_with_merkle_verification<'info>(
+        ctx: Context<'info, ManageVaultWithMerkleVerification<'info>>,
+        args: ManageVaultWithMerkleVerificationArgs,
+    ) -> Result<()> {
+        instructions::manage_vault_with_merkle_verification::handler(ctx, args)
     }
 
     /// Creates a primary-asset position token account for an approved venue.

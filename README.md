@@ -8,7 +8,8 @@ It implements a tokenized vault with a NAV-based async deposit/redeem lifecycle
 and layers on the control surface a real fund needs:
 role-separated operations, stricter NAV-based settlement, multi-asset
 accounting, venue approval metadata, tranche accounting, instant settlement, and
-protocol fee routing with an optional program-level recipient config.
+protocol fee routing with an optional program-level recipient config. An opt-in
+Merkle strategy policy can additionally constrain vault-signed venue CPIs.
 
 > Reference implementation only. Unaudited, not deployed to mainnet-beta, and
 > not ready for production funds.
@@ -30,6 +31,7 @@ The current implementation focuses on testable on-chain primitives:
 - timelocked vault, fee, and mutable TLV extension changes
 - approved secondary-asset records and per-asset ledgers
 - externally managed withdrawal opt-in and venue approval metadata
+- strategist-bound Merkle capability roots for approved venue CPIs
 - constrained SPL token-account position stubs
 - senior/junior tranche accounting and tranche-scoped async requests
 - primary-asset instant deposit/redeem flows
@@ -93,7 +95,8 @@ flowchart TD
     Fulfiller[Fulfiller] --> Requests
     Fulfiller --> NAV[NAV updates]
     Breaker[Breaker] --> Pause[Pause only]
-    Manager[Manager and hot manager] --> Positions[Venue position stubs]
+    Manager[Manager and hot manager] --> Policies[Merkle strategy policies]
+    Manager --> Positions[Venue position stubs]
 
     Requests --> Vault[Vault PDA]
     Instant --> Vault
@@ -103,12 +106,14 @@ flowchart TD
     Vault --> TLV[Vault TLV extensions]
     Vault --> Assets[VaultAsset PDAs]
     Vault --> Venues[VenueEntry and VaultVenue PDAs]
+    Vault --> Policies
     Vault --> Tranches[TrancheConfig PDA]
     Vault --> Fees[Fee recipients]
     ProtocolConfig[ProtocolFeeConfig PDA] --> Fees
 
     Assets --> Positions
     Venues --> Positions
+    Policies --> External[Approved external venue CPI]
 ```
 
 ### Core Accounts
@@ -120,14 +125,17 @@ flowchart TD
 - `VaultAsset`: approved secondary asset metadata plus per-asset reserve,
   pending, idle, deployed, and cap accounting.
 - `VenueEntry` and `VaultVenue`: venue registry metadata, per-vault approval
-  state, and approved withdrawal recipient authority. These do not execute
-  arbitrary CPI yet.
+  state, approved discriminators, routine-safe role metadata, and approved
+  withdrawal recipient authority.
+- `StrategyPolicy`: optional per-vault, per-strategist Merkle root and version
+  used to authorize selected instruction bytes, accounts, and privileges before
+  the vault PDA signs one venue CPI.
 - `Position`: constrained SPL token-account custody stub for manager deploy/pull
   tests.
 - `TrancheConfig`: senior/junior share-mint config, NAV snapshots, request
   limits, FIFO lane counters, and junior-ratio guard data.
-- `PendingVaultUpdate`, `PendingFeeUpdate`, `PendingExtensionUpdate`: typed
-  timelock queues for delayed config changes.
+- `PendingVaultUpdate`, `PendingFeeUpdate`, `PendingExtensionUpdate`,
+  `PendingStrategyPolicyUpdate`: typed timelock queues for delayed config changes.
 - `InstantSettlementUser`: optional per-user instant settlement rolling-limit
   bucket.
 - `ProtocolFeeConfig`: singleton program-level recipient override for protocol
@@ -151,7 +159,9 @@ Implemented or partially implemented:
 - Phase 2 approved secondary-asset PDAs, request unwind paths, and fail-closed
   secondary approvals until USD-normalized pricing exists.
 - Phase 3 externally managed withdrawal opt-in, venue metadata, per-vault venue
-  approvals, and constrained position stubs.
+  approvals, constrained position stubs, and an opt-in Merkle-verified venue CPI
+  boundary with strategist roots, timelocked root rotation, bounded operators,
+  rolling limits, and a post-CPI share-supply invariant.
 - Phase 4 tranche config, waterfall accounting, tranche-scoped requests,
   request bounds, junior-ratio guards, lane-local FIFO queue counters, and
   tranche/performance-fee incompatibility guards.
@@ -163,7 +173,7 @@ Not implemented yet:
 
 - USD-normalized multi-asset NAV
 - oracle adapters and oracle-backed NAV validation
-- validated arbitrary venue CPI execution
+- protocol-specific venue adapters and arbitrary-CPI position accounting
 - external protocol custody accounting
 - vault-in-vault cycle prevention
 - secondary-asset or tranche-aware instant settlement
@@ -207,6 +217,7 @@ cargo test -p integration-tests
 - [Design Decisions](DESIGN_DECISIONS.md)
 - [Account Layout](docs/ACCOUNTS.md)
 - [Integration Mapping](docs/INTEGRATION.md)
+- [Merkle Strategy Policy](docs/MERKLE_STRATEGY_POLICY.md)
 - [Spec Coverage](docs/SPEC_COVERAGE.md)
 - [Upstream Test Map](docs/UPSTREAM_TEST_MAP.md)
 - [Sequence Diagrams](programs/async_vault_v2/docs/SEQUENCES.md)

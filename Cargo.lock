@@ -692,6 +692,7 @@ dependencies = [
  "solana-pubkey 3.0.0",
  "solana-rpc-client",
  "solana-sdk",
+ "solana-sha256-hasher",
  "tabled",
  "thiserror 2.0.18",
 ]
@@ -704,6 +705,7 @@ dependencies = [
  "anchor-spl",
  "bytemuck",
  "proptest",
+ "solana-sha256-hasher",
  "test-case",
  "vault_common",
 ]

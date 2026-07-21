@@ -63,6 +63,7 @@ export function AuthorityActions({
     const [navInput, setNavInput] = React.useState('1');
     const [withdrawAmount, setWithdrawAmount] = React.useState('');
     const [withdrawTo, setWithdrawTo] = React.useState('');
+    const [withdrawVenueEntry, setWithdrawVenueEntry] = React.useState('');
     const [newAuthority, setNewAuthority] = React.useState('');
     const feeRecipient = vault.base.feeRecipient as string;
     const [demoMintAmount, setDemoMintAmount] = React.useState('1000');
@@ -190,13 +191,15 @@ export function AuthorityActions({
                 owner: recipient,
                 payer: signer,
             });
-            const withdrawIx = buildWithdrawAssetsIx({
+            const venueEntry = requireAddress(withdrawVenueEntry, 'Venue entry');
+            const withdrawIx = await buildWithdrawAssetsIx({
                 amount: parseTokenAmount(withdrawAmount || '0', vault.assetMint.decimals),
                 assetMint: vault.base.assetMint,
                 assetTokenProgram: vault.assetTokenProgram,
                 authority: signer,
                 recipientTokenAccount: recipientAta,
                 vault: vault.pdas.vault,
+                venueEntry,
                 vaultTokenAccount: vault.pdas.reserve,
             });
             if (await send([ataIx, withdrawIx], { action: 'Withdraw assets' })) {
@@ -460,12 +463,20 @@ export function AuthorityActions({
                     <CardHeader>
                         <CardTitle className="text-base">Withdraw vault assets</CardTitle>
                         <CardDescription>
-                            Move assets out of the vault reserve — typically to deploy them off-chain.{' '}
-                            <code className="font-mono">total_asset_balance</code> still tracks the virtual balance for
-                            NAV math.
+                            Move assets to a recipient authorized by an approved vault venue. The venue entry must
+                            already be active in the registry.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
+                        <div>
+                            <Label>Venue entry</Label>
+                            <Input
+                                className="mt-1.5"
+                                value={withdrawVenueEntry}
+                                onChange={e => setWithdrawVenueEntry(e.target.value)}
+                                placeholder="Approved VenueEntry PDA"
+                            />
+                        </div>
                         <div>
                             <Label>Amount</Label>
                             <Input
@@ -484,7 +495,11 @@ export function AuthorityActions({
                                 placeholder="Defaults to your wallet"
                             />
                         </div>
-                        <Button onClick={handleWithdraw} disabled={!isAuthority || !withdrawAmount} className="w-full">
+                        <Button
+                            onClick={handleWithdraw}
+                            disabled={!isAuthority || !withdrawAmount || !withdrawVenueEntry}
+                            className="w-full"
+                        >
                             <Send className="size-4" /> Withdraw
                         </Button>
                     </CardContent>

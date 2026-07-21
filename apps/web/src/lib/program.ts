@@ -1,8 +1,8 @@
 import { AccountRole, type Address, type Instruction, type TransactionSigner } from '@solana/kit';
 
 import {
-    findPendingVaultPda,
-    findReservePda,
+    findCreateVaultPendingVaultPda,
+    findCreateVaultReservePda,
     findVaultPda,
     getAcceptAuthorityInvitationInstruction,
     getApproveRequestInstruction,
@@ -23,7 +23,7 @@ import {
     getInitializeVaultInstruction,
     getInitializeWithdrawalFeeInstruction,
     getInviteNewAuthorityInstruction,
-    getRejectRequestInstructionAsync,
+    getRejectRequestInstruction,
     getSetOperatorInstruction,
     getSkipCanceledQueueRequestInstruction,
     getUpdateDepositFeeInstruction,
@@ -34,7 +34,7 @@ import {
     getUpdateVaultInstructionAsync,
     getUpdateVaultNavInstruction,
     getUpdateWithdrawalFeeInstruction,
-    getWithdrawAssetsInstruction,
+    getWithdrawAssetsInstructionAsync,
     type FeeTypeArgs,
     type RequestTypeArgs,
 } from '@sendai/solana-vault-v2';
@@ -55,8 +55,8 @@ export async function deriveVaultPdas(shareMint: Address): Promise<VaultPdas> {
     const seeds = { shareMint };
     const [v, r, p] = await Promise.all([
         findVaultPda(seeds, PROGRAM_CONFIG),
-        findReservePda(seeds, PROGRAM_CONFIG),
-        findPendingVaultPda(seeds, PROGRAM_CONFIG),
+        findCreateVaultReservePda(seeds, PROGRAM_CONFIG),
+        findCreateVaultPendingVaultPda(seeds, PROGRAM_CONFIG),
     ]);
     return { pendingVault: p[0], reserve: r[0], vault: v[0] };
 }
@@ -117,9 +117,31 @@ export function buildUpdateVaultIxAsync(args: {
 }): Promise<Instruction> {
     return getUpdateVaultInstructionAsync(
         {
+            args: {
+                breaker: null,
+                depositCap: null,
+                externalWithdrawRollingLimit: null,
+                feeRecipient: args.feeRecipient,
+                fulfiller: null,
+                hotManager: null,
+                instantRedemptionFeeBps: null,
+                manager: null,
+                managerRollingLimit: null,
+                maxImpliedApyBps: null,
+                maxNavDeltaBps: null,
+                maxNavStalenessSlots: null,
+                navMode: null,
+                paused: args.paused,
+                performanceFeeBps: null,
+                performanceFeeCrystallizationIntervalSeconds: null,
+                protocolFeeBps: null,
+                protocolFeeRecipient: null,
+                redemptionRollingLimit: null,
+                requireFreshNav: null,
+                rollingLimitWindowSlots: null,
+                timelockDelaySlots: null,
+            },
             authority: args.authority,
-            feeRecipient: args.feeRecipient,
-            paused: args.paused,
             shareMint: args.shareMint,
             vault: args.vault,
         },
@@ -156,12 +178,13 @@ export function buildWithdrawAssetsIx(args: {
     authority: TransactionSigner;
     assetMint: Address;
     vault: Address;
+    venueEntry: Address;
     vaultTokenAccount: Address;
     recipientTokenAccount: Address;
     amount: bigint;
     assetTokenProgram: TokenProgramKind;
-}): Instruction {
-    return getWithdrawAssetsInstruction(
+}): Promise<Instruction> {
+    return getWithdrawAssetsInstructionAsync(
         {
             amount: args.amount,
             assetMint: args.assetMint,
@@ -169,6 +192,7 @@ export function buildWithdrawAssetsIx(args: {
             authority: args.authority,
             recipientTokenAccount: args.recipientTokenAccount,
             vault: args.vault,
+            venueEntry: args.venueEntry,
             vaultTokenAccount: args.vaultTokenAccount,
         },
         PROGRAM_CONFIG,
@@ -283,8 +307,8 @@ export interface RejectRequestParams {
     assertion: RequestAssertion;
 }
 
-export function buildRejectRequestIx(p: RejectRequestParams): Promise<Instruction> {
-    return getRejectRequestInstructionAsync(
+export function buildRejectRequestIx(p: RejectRequestParams): Instruction {
+    return getRejectRequestInstruction(
         {
             amount: p.assertion.amount,
             assetMint: p.assetMint,

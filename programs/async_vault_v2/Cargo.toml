@@ -24,6 +24,7 @@ anchor-lang.workspace = true
 anchor-spl.workspace = true
 vault_common.workspace = true
 bytemuck.workspace = true
+solana-sha256-hasher.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
