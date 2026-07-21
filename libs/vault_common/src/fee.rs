@@ -46,6 +46,16 @@ mod tests {
     use super::*;
     use proptest::prelude::*;
 
+    fn proptest_config() -> ProptestConfig {
+        let mut config = ProptestConfig::default();
+        if cfg!(miri) {
+            // Miri isolation intentionally rejects getcwd, which proptest's default
+            // failure-persistence implementation calls before running any case.
+            config.failure_persistence = None;
+        }
+        config
+    }
+
     #[test]
     fn get_fee_percentage_rounds_up() {
         assert_eq!(
@@ -83,6 +93,8 @@ mod tests {
     }
 
     proptest! {
+        #![proptest_config(proptest_config())]
+
         #[test]
         fn percentage_fee_matches_round_up_formula(
             amount in 0u64..=u64::MAX,
