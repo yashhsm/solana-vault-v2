@@ -56,8 +56,9 @@ pnpm run generate-clients
 | Per-asset manager bucket       | `VaultAsset.manager_window_start_slot`, `VaultAsset.manager_window_amount`, with `Vault.manager_rolling_limit` and `rolling_limit_window_slots` | Implemented for approved-secondary venue deploy/pull                                                         |
 | Externally managed withdrawals | `ExternallyManagedWithdrawals` vault TLV extension plus active `VenueEntry`/`VaultVenue` accounts                                               | Partial; gates `withdraw_assets` opt-in, venue approval, and recipient authority; no CPI template validation |
 | Instant settlement             | `InstantSettlement` vault TLV extension and `InstantSettlementUser` PDA                                                                         | Partial; primary asset, non-tranche only; requires nonzero staleness and instant fee guards                  |
-| Venue registry entry           | `VenueEntry` PDA from `[VENUE_ENTRY_SEED, registry_authority, venue_id]`                                                                        | Partial; state only, no CPI execution                                                                        |
-| Per-vault venue approval       | `VaultVenue` PDA from `[VAULT_VENUE_SEED, vault, venue_entry]`                                                                                  | Partial; approval state gates `withdraw_assets`, approved recipient authority, and position stubs            |
+| Venue registry entry           | `VenueEntry` PDA from `[VENUE_ENTRY_SEED, registry_authority, venue_id]`                                                                        | Partial; gates managed CPI target and discriminator plus withdrawal/position paths                           |
+| Per-vault venue approval       | `VaultVenue` PDA from `[VAULT_VENUE_SEED, vault, venue_entry]`                                                                                  | Partial; approval state gates managed CPI, withdrawals, recipient authority, and position stubs              |
+| Merkle strategy policy         | `StrategyPolicy` PDA from `[STRATEGY_POLICY_SEED, vault, strategist]`                                                                           | Implemented opt-in root/version/pause boundary for one approved venue CPI                                    |
 | Venue positions                | `Position` PDA from `[POSITION_SEED, vault, venue_entry, asset_mint]`                                                                           | Partial; primary and approved-secondary SPL token-account stub only                                          |
 | Tranche config                 | `TrancheConfig` PDA from `[TRANCHE_CONFIG_SEED, vault]`                                                                                         | Partial; dual-mint scaffold, waterfall, request binding, bounds, junior-ratio floor, FIFO counters           |
 | Per-tranche NAV/supply         | `Vault.tranche_config`, `TrancheConfig.senior_*`, `TrancheConfig.junior_*`                                                                      | Partial; waterfall on NAV update, request pricing, and approval guards                                       |
@@ -66,6 +67,7 @@ pnpm run generate-clients
 | Timelocked vault updates       | `PendingVaultUpdate`, `Vault.timelock_delay_slots`                                                                                              | Implemented for vault config updates                                                                         |
 | Timelocked fee changes         | `PendingFeeUpdate`, `Vault.timelock_delay_slots`                                                                                                | Implemented for deposit/withdrawal fee updates                                                               |
 | Other timelocked TLV changes   | `PendingExtensionUpdate`, `Vault.timelock_delay_slots`                                                                                          | Implemented for min subscription, min redemption, and pausable subscription/redemption updates               |
+| Timelocked strategy roots      | `PendingStrategyPolicyUpdate`, `Vault.timelock_delay_slots`                                                                                     | Implemented with expected-version and stale-curator checks                                                   |
 | Performance fee                | `Vault.performance_fee_bps`, `Vault.high_water_mark`, `performance_fee_crystallization_interval_seconds`, `last_fee_crystallization_timestamp`  | Implemented for single-tranche NAV updates; rejected for tranche vaults                                      |
 | Instant redemption fee         | `Vault.instant_redemption_fee_bps`                                                                                                              | Implemented for primary instant redeems only                                                                 |
 | Protocol fee                   | `Vault.protocol_fee_bps`, `Vault.protocol_fee_recipient`, singleton `ProtocolFeeConfig`                                                         | Partial; vault-level bps with optional program-level recipient routing for implemented fee sources           |
@@ -161,7 +163,7 @@ yet.
 
 ## Venue Administration
 
-Venue registry state is a Phase 3 scaffold:
+Venue registry state and the optional Merkle execution boundary work as follows:
 
 1. A registry authority calls `register_venue` with a fixed `venue_id`, target
    program, bounded list of allowed instruction discriminators, venue type, risk
@@ -187,10 +189,23 @@ Venue registry state is a Phase 3 scaffold:
    approval is routine-safe.
 7. A curator can remove a zero-balance `Position`, then remove the `VaultVenue`
    only while its position count is zero.
+8. For vault-signed external calls, the curator initializes one
+   `StrategyPolicy` per strategist, compiles allowed calls into canonical leaves,
+   stores the Merkle root, and distributes proofs off-chain. Root updates use
+   the vault timelock when configured.
+9. The manager or routine-safe hot manager calls
+   `manage_vault_with_merkle_verification` with the target instruction, ordered
+   CPI accounts, leaf operators, policy version, and proof. The program checks
+   venue/role/pause state, reconstructs and verifies the leaf, applies a selected
+   manager-limit amount, signs the CPI as the vault PDA, and checks that share
+   supply did not change.
 
-The registry state is not a generic execution boundary yet. No instruction can
-execute third-party venue CPI, validate venue account templates, custody
-arbitrary external protocol positions, or prevent vault-in-vault cycles.
+The Merkle path is a generic capability boundary, not a protocol accounting
+adapter. It does not infer economic meaning from unselected bytes, update
+`Position`/`VaultAsset` ledgers for arbitrary calls, prove an upgradeable target
+is safe, or prevent vault-in-vault cycles. Curators should ingest every sensitive
+account and byte, and use protocol-specific adapters where post-CPI balance
+accounting is required. See [`MERKLE_STRATEGY_POLICY.md`](MERKLE_STRATEGY_POLICY.md).
 
 ## Tranche Administration
 
@@ -247,8 +262,9 @@ protocol-fee share account, then share token program.
   It can only send to the recipient authority stored on the vault/venue
   approval, but it is still a curator-controlled pull, not a validated venue CPI
   boundary.
-- `VenueEntry` and `VaultVenue` accounts are approval metadata only. Do not treat
-  them as proof that a downstream CPI action is validated or safe.
+- `VenueEntry` and `VaultVenue` approvals plus a valid Merkle proof constrain a
+  downstream CPI shape; they do not prove that the target program or the
+  curator-authored policy is economically safe.
 - `Position` currently represents a vault-owned SPL token-account stub for the
   primary asset or an approved secondary asset. It is useful for local
   ledger/deploy/pull integration, not for external protocol custody.

@@ -51,7 +51,8 @@ Implemented timelock field:
 - `timelock_delay_slots`: when nonzero, timelocked vault config fields must be
   queued through `PendingVaultUpdate`; deposit/withdrawal fee updates must be
   queued through `PendingFeeUpdate`; mutable non-fee TLV extension values must
-  be queued through `PendingExtensionUpdate`.
+  be queued through `PendingExtensionUpdate`; and strategy policy roots must be
+  queued through `PendingStrategyPolicyUpdate`.
 
 Implemented fee fields:
 
@@ -230,12 +231,12 @@ Important fields:
 
 - `registry_authority`: signer that created and can pause the entry.
 - `venue_id`: fixed 32-byte caller-defined identifier.
-- `target_program`: program ID future venue CPI validation may target.
+- `target_program`: program ID the Merkle-verified venue CPI boundary may target.
 - `allowed_discriminator_count`, `allowed_discriminators`: bounded list of
   active 8-byte instruction discriminators; unused bytes are zeroed.
 - `venue_type`, `risk_class`, `routine_safe`: metadata for future policy and
   reader surfaces.
-- `paused`: paused venues cannot be newly approved by vaults.
+- `paused`: paused venues cannot be newly approved or used for managed CPI.
 
 Implemented instructions:
 
@@ -268,6 +269,44 @@ Implemented instructions:
   stores a non-default recipient authority for externally managed withdrawals.
 - `remove_vault_venue`: curator-only, blocked when timelock is active, and
   closes only zero-position approvals.
+
+## Strategy Policy
+
+- Account type: `StrategyPolicy`
+- Seeds: `[STRATEGY_POLICY_SEED, vault, strategist]`
+- Bump field: `strategy_policy.bump`
+- Owner: `async_vault_v2`
+- Purpose: optional capability root for vault-signed calls initiated by one
+  manager or hot manager.
+
+Important fields:
+
+- `vault`, `strategist`: prevent cross-vault and cross-strategist proof replay.
+- `merkle_root`, `version`: active commitment and monotonic policy version.
+- `paused`: immediately blocks managed actions; curator updates are required to
+  unpause.
+- `executing`: transaction-scoped reentrancy guard around the external CPI.
+
+Implemented instructions:
+
+- `initialize_strategy_policy`: curator-only creation in a disabled state.
+- `update_strategy_policy`: immediate curator root update only when the vault
+  timelock is zero.
+- `queue_strategy_policy_update`, `execute_strategy_policy_update`, and
+  `cancel_strategy_policy_update`: version-bound root rotation through the
+  existing vault timelock.
+- `pause_strategy_policy`: immediate curator-or-breaker pause that increments
+  the version to invalidate existing proofs and queued updates.
+- `close_strategy_policy`: curator-only revocation and rent recovery.
+- `manage_vault_with_merkle_verification`: manager/hot-manager execution for an
+  active `VenueEntry`/`VaultVenue`. It reconstructs the canonical leaf from
+  bounded instruction/account operators, verifies the proof, applies any
+  selected amount to the manager rolling limit, invokes the external program
+  with the vault PDA signer, and requires share supply to remain unchanged.
+
+The full manifest and proofs remain off-chain. See
+[`MERKLE_STRATEGY_POLICY.md`](MERKLE_STRATEGY_POLICY.md) for the byte encoding,
+tree construction, trust model, and client flow.
 
 ## Position
 

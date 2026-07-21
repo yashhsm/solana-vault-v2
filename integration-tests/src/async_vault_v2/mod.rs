@@ -9,6 +9,7 @@ mod extenstions;
 mod fee_extensions;
 mod initialize_vault;
 mod instant_settlement;
+mod merkle_strategy_policy;
 mod protocol_fee_config;
 mod reject_request;
 mod set_operator;

@@ -160,6 +160,44 @@ pub enum AsyncVaultError {
     InstantRedeemSharesAboveMaximum,
     #[msg("Withdraw recipient authority does not match the approved venue recipient.")]
     InvalidVenueRecipient,
+    #[msg("Strategy policy account is invalid.")]
+    InvalidStrategyPolicy,
+    #[msg("Strategy policy is paused.")]
+    StrategyPolicyPaused,
+    #[msg("Strategy policy root cannot be zero when the policy is active.")]
+    EmptyMerkleRoot,
+    #[msg("Merkle proof exceeds the configured maximum depth.")]
+    MerkleProofTooDeep,
+    #[msg("Merkle proof does not match the configured policy root.")]
+    MerkleProofInvalid,
+    #[msg("Strategy policy version is stale.")]
+    StaleStrategyPolicyVersion,
+    #[msg("Strategy policy operator is invalid.")]
+    InvalidPolicyOperator,
+    #[msg("Strategy policy operator is out of bounds.")]
+    PolicyOperatorOutOfBounds,
+    #[msg("Only one manager-limit amount operator is allowed.")]
+    DuplicateManagerLimitOperator,
+    #[msg("Venue instruction data is invalid.")]
+    InvalidVenueInstruction,
+    #[msg("Venue instruction discriminator is not allowed.")]
+    VenueInstructionNotAllowed,
+    #[msg("Target program does not match the approved venue.")]
+    TargetProgramMismatch,
+    #[msg("Target program account is not executable.")]
+    TargetProgramNotExecutable,
+    #[msg("The vault program cannot manage itself through the strategy policy.")]
+    UnsafeTargetProgram,
+    #[msg("Managed CPI has too many accounts.")]
+    TooManyCpiAccounts,
+    #[msg("Managed instruction data is too large.")]
+    InstructionDataTooLarge,
+    #[msg("Share supply changed during a managed strategy call.")]
+    ShareSupplyChanged,
+    #[msg("Reentrant strategy calls are not allowed.")]
+    ReentrantStrategyCall,
+    #[msg("Policy instruction ingestion exceeds the configured byte limit.")]
+    PolicyIngestionLimitExceeded,
 }
 
 impl From<vault_common::VaultMathError> for AsyncVaultError {

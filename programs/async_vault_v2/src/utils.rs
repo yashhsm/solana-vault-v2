@@ -17,6 +17,8 @@ use crate::{
     },
 };
 
+pub mod merkle;
+
 #[derive(Clone, Copy)]
 pub struct TrancheRequestInfo {
     pub senior_share_mint: Pubkey,

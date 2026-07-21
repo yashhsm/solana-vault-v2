@@ -1,5 +1,7 @@
 mod generated;
 
+pub mod merkle_strategy_policy;
+
 pub mod extensions;
 
 #[cfg(feature = "litesvm")]
@@ -79,8 +81,13 @@ pub mod lite {
                 "cancel_extension_update",
             ),
             (CANCEL_FEE_UPDATE_DISCRIMINATOR, "cancel_fee_update"),
+            (
+                CANCEL_STRATEGY_POLICY_UPDATE_DISCRIMINATOR,
+                "cancel_strategy_policy_update",
+            ),
             (CANCEL_VAULT_UPDATE_DISCRIMINATOR, "cancel_vault_update"),
             (CLAIM_DISCRIMINATOR, "claim"),
+            (CLOSE_STRATEGY_POLICY_DISCRIMINATOR, "close_strategy_policy"),
             (
                 CREATE_DEPOSIT_REQUEST_DISCRIMINATOR,
                 "create_deposit_request",
@@ -94,6 +101,10 @@ pub mod lite {
                 "execute_extension_update",
             ),
             (EXECUTE_FEE_UPDATE_DISCRIMINATOR, "execute_fee_update"),
+            (
+                EXECUTE_STRATEGY_POLICY_UPDATE_DISCRIMINATOR,
+                "execute_strategy_policy_update",
+            ),
             (EXECUTE_VAULT_UPDATE_DISCRIMINATOR, "execute_vault_update"),
             (
                 INITIALIZE_DEPOSIT_FEE_DISCRIMINATOR,
@@ -135,6 +146,10 @@ pub mod lite {
                 INITIALIZE_SUBSCRIPTION_QUEUE_DISCRIMINATOR,
                 "initialize_subscription_queue",
             ),
+            (
+                INITIALIZE_STRATEGY_POLICY_DISCRIMINATOR,
+                "initialize_strategy_policy",
+            ),
             (INITIALIZE_TRANCHES_DISCRIMINATOR, "initialize_tranches"),
             (INITIALIZE_VAULT_DISCRIMINATOR, "initialize_vault"),
             (
@@ -144,6 +159,11 @@ pub mod lite {
             (INSTANT_DEPOSIT_DISCRIMINATOR, "instant_deposit"),
             (INSTANT_REDEEM_DISCRIMINATOR, "instant_redeem"),
             (INVITE_NEW_AUTHORITY_DISCRIMINATOR, "invite_new_authority"),
+            (
+                MANAGE_VAULT_WITH_MERKLE_VERIFICATION_DISCRIMINATOR,
+                "manage_vault_with_merkle_verification",
+            ),
+            (PAUSE_STRATEGY_POLICY_DISCRIMINATOR, "pause_strategy_policy"),
             (PAUSE_VAULT_DISCRIMINATOR, "pause_vault"),
             (PULL_VENUE_POSITION_DISCRIMINATOR, "pull_venue_position"),
             (
@@ -151,6 +171,10 @@ pub mod lite {
                 "queue_extension_update",
             ),
             (QUEUE_FEE_UPDATE_DISCRIMINATOR, "queue_fee_update"),
+            (
+                QUEUE_STRATEGY_POLICY_UPDATE_DISCRIMINATOR,
+                "queue_strategy_policy_update",
+            ),
             (QUEUE_VAULT_UPDATE_DISCRIMINATOR, "queue_vault_update"),
             (REGISTER_VENUE_DISCRIMINATOR, "register_venue"),
             (REJECT_REQUEST_DISCRIMINATOR, "reject_request"),
@@ -182,6 +206,10 @@ pub mod lite {
             (
                 UPDATE_PROTOCOL_FEE_CONFIG_DISCRIMINATOR,
                 "update_protocol_fee_config",
+            ),
+            (
+                UPDATE_STRATEGY_POLICY_DISCRIMINATOR,
+                "update_strategy_policy",
             ),
             (UPDATE_VAULT_DISCRIMINATOR, "update_vault"),
             (UPDATE_VAULT_NAV_DISCRIMINATOR, "update_vault_nav"),
