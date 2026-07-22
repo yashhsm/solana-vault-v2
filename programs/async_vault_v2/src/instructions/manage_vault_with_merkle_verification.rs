@@ -14,9 +14,12 @@ use crate::{
         StrategyPolicy, Vault, VaultVenue, VenueEntry, MAX_MANAGE_CPI_ACCOUNTS,
         MAX_MANAGE_IX_DATA_LEN, STRATEGY_POLICY_SEED, VAULT_CONFIG_SEED, VAULT_VENUE_SEED,
     },
-    utils::assert_generic_strategy_has_no_vault_token_writes,
-    utils::merkle::{
-        hash_strategy_leaf, verify_strategy_proof, PolicyAccountMeta, PolicyOperator, StrategyLeaf,
+    utils::{
+        assert_generic_strategy_has_no_vault_token_writes,
+        merkle::{
+            hash_strategy_leaf, verify_strategy_proof, PolicyAccountMeta, PolicyOperator,
+            StrategyLeaf,
+        },
     },
 };
 
