@@ -61,17 +61,14 @@ pub fn is_protocol_fee_config_account(info: &AccountInfo) -> bool {
 
 pub fn protocol_fee_recipient_from_config<'info>(
     info: &'info AccountInfo<'info>,
-) -> Result<Pubkey> {
+) -> Result<Option<Pubkey>> {
     let (expected, expected_bump) =
         Pubkey::find_program_address(&[PROTOCOL_FEE_CONFIG_SEED], &crate::ID);
     require_keys_eq!(*info.key, expected, AsyncVaultError::InvalidVault);
     let config: Account<ProtocolFeeConfig> = Account::try_from(info)?;
     require!(config.bump == expected_bump, AsyncVaultError::InvalidVault);
-    require!(
-        config.protocol_fee_recipient != Pubkey::default(),
-        AsyncVaultError::InvalidFeeRecipient
-    );
-    Ok(config.protocol_fee_recipient)
+    Ok((config.protocol_fee_recipient != Pubkey::default())
+        .then_some(config.protocol_fee_recipient))
 }
 
 pub fn resolve_protocol_fee_recipient<'info>(
@@ -80,7 +77,9 @@ pub fn resolve_protocol_fee_recipient<'info>(
 ) -> Result<(Pubkey, bool)> {
     if let Some(config_info) = maybe_config_info {
         if is_protocol_fee_config_account(config_info) {
-            return Ok((protocol_fee_recipient_from_config(config_info)?, true));
+            let recipient = protocol_fee_recipient_from_config(config_info)?
+                .unwrap_or(vault.protocol_fee_recipient);
+            return Ok((recipient, true));
         }
     }
 

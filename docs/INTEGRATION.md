@@ -70,7 +70,7 @@ pnpm run generate-clients
 | Timelocked strategy roots      | `PendingStrategyPolicyUpdate`, `Vault.timelock_delay_slots`                                                                                     | Implemented with expected-version and stale-curator checks                                                   |
 | Performance fee                | `Vault.performance_fee_bps`, `Vault.high_water_mark`, `performance_fee_crystallization_interval_seconds`, `last_fee_crystallization_timestamp`  | Implemented for single-tranche NAV updates; rejected for tranche vaults                                      |
 | Instant redemption fee         | `Vault.instant_redemption_fee_bps`                                                                                                              | Implemented for primary instant redeems only                                                                 |
-| Protocol fee                   | `Vault.protocol_fee_bps`, `Vault.protocol_fee_recipient`, singleton `ProtocolFeeConfig`                                                         | Partial; vault-level bps with optional program-level recipient routing for implemented fee sources           |
+| Protocol fee                   | `Vault.protocol_fee_bps`, `Vault.protocol_fee_recipient`, singleton `ProtocolFeeConfig` + `ProtocolFeeGovernance`                               | Partial; vault-level bps with securely bootstrapped, timelocked program-level recipient routing              |
 
 ## Request Lifecycle
 

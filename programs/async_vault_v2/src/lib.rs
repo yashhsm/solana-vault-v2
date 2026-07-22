@@ -104,7 +104,7 @@ pub mod async_vault_v2 {
         instructions::cancel_fee_update::handler(ctx)
     }
 
-    /// Initializes the singleton program-level protocol fee recipient config.
+    /// Disabled legacy singleton initializer retained for discriminator compatibility.
     pub fn initialize_protocol_fee_config(
         ctx: Context<InitializeProtocolFeeConfig>,
         args: InitializeProtocolFeeConfigArgs,
@@ -112,12 +112,69 @@ pub mod async_vault_v2 {
         instructions::initialize_protocol_fee_config::handler(ctx, args)
     }
 
-    /// Updates the singleton program-level protocol fee recipient config.
+    /// Disabled legacy direct updater retained for discriminator compatibility.
     pub fn update_protocol_fee_config(
         ctx: Context<UpdateProtocolFeeConfig>,
         args: UpdateProtocolFeeConfigArgs,
     ) -> Result<()> {
         instructions::update_protocol_fee_config::handler(ctx, args)
+    }
+
+    /// Securely bootstraps or migrates protocol-fee governance using the upgrade authority.
+    pub fn initialize_protocol_fee_config_v2(
+        ctx: Context<InitializeProtocolFeeConfigV2>,
+        args: InitializeProtocolFeeConfigV2Args,
+    ) -> Result<()> {
+        instructions::initialize_protocol_fee_config_v2::handler(ctx, args)
+    }
+
+    /// Queues a recipient activation or rotation under the global fee timelock.
+    pub fn queue_protocol_fee_config_update(
+        ctx: Context<QueueProtocolFeeConfigUpdate>,
+        args: ProtocolFeeConfigUpdateArgs,
+    ) -> Result<()> {
+        instructions::queue_protocol_fee_config_update::handler(ctx, args)
+    }
+
+    /// Executes a queued protocol-fee recipient update after its ETA.
+    pub fn execute_protocol_fee_config_update(
+        ctx: Context<ExecuteProtocolFeeConfigUpdate>,
+    ) -> Result<()> {
+        instructions::execute_protocol_fee_config_update::handler(ctx)
+    }
+
+    /// Cancels a queued protocol-fee recipient update.
+    pub fn cancel_protocol_fee_config_update(
+        ctx: Context<CancelProtocolFeeConfigUpdate>,
+    ) -> Result<()> {
+        instructions::cancel_protocol_fee_config_update::handler(ctx)
+    }
+
+    /// Immediately disables the global recipient override and invalidates stale queues.
+    pub fn pause_protocol_fee_config(ctx: Context<PauseProtocolFeeConfig>) -> Result<()> {
+        instructions::pause_protocol_fee_config::handler(ctx)
+    }
+
+    /// Queues a two-step protocol-fee authority transfer.
+    pub fn queue_protocol_fee_authority_transfer(
+        ctx: Context<QueueProtocolFeeAuthorityTransfer>,
+        new_authority: Pubkey,
+    ) -> Result<()> {
+        instructions::queue_protocol_fee_authority_transfer::handler(ctx, new_authority)
+    }
+
+    /// Accepts a queued protocol-fee authority transfer after its ETA.
+    pub fn accept_protocol_fee_authority_transfer(
+        ctx: Context<AcceptProtocolFeeAuthorityTransfer>,
+    ) -> Result<()> {
+        instructions::accept_protocol_fee_authority_transfer::handler(ctx)
+    }
+
+    /// Cancels a queued protocol-fee authority transfer.
+    pub fn cancel_protocol_fee_authority_transfer(
+        ctx: Context<CancelProtocolFeeAuthorityTransfer>,
+    ) -> Result<()> {
+        instructions::cancel_protocol_fee_authority_transfer::handler(ctx)
     }
 
     /// Queues a timelocked mutable non-fee TLV extension update.

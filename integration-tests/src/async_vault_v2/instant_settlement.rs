@@ -4,8 +4,8 @@ use anchor_spl::{
 use async_vault_v2_client::{
     extensions::instant_settlement::get_state as get_instant_settlement_state,
     lite::SendTransaction, sdk::program_id, InitializeInstantSettlementBuilder,
-    InitializeProtocolFeeConfigBuilder, InitializeTranchesBuilder, InitializeVaultBuilder,
-    InstantDepositBuilder, InstantRedeemBuilder, UpdateVaultBuilder, UpdateVaultNavBuilder, Vault,
+    InitializeTranchesBuilder, InitializeVaultBuilder, InstantDepositBuilder, InstantRedeemBuilder,
+    UpdateVaultBuilder, UpdateVaultNavBuilder, Vault,
 };
 use litesvm::LiteSVM;
 use solana_sdk::{
@@ -17,7 +17,8 @@ use test_case::test_case;
 use crate::{
     async_helper_functions::{
         assert_error_code, create_ata, create_mint, get_mint_supply, get_token_account_amount,
-        helper_mint_to, set_share_balance, set_up_async_vault_v2,
+        helper_mint_to, initialize_and_activate_protocol_fee_config, set_share_balance,
+        set_up_async_vault_v2,
     },
     async_vault_v2::constants::{
         EXTENSION_ALREADY_INITIALIZED, INSTANT_DEPOSIT_AMOUNT_ABOVE_MAXIMUM,
@@ -31,7 +32,6 @@ use crate::{
 
 const TRANCHE_CONFIG_SEED: &[u8] = b"tranches";
 const INSTANT_USER_LIMIT_SEED: &[u8] = b"instant_user";
-const PROTOCOL_FEE_CONFIG_SEED: &[u8] = b"protocol_fee_config";
 const DEFAULT_INSTANT_NAV_STALENESS_SLOTS: u64 = 64;
 
 fn add_program(svm: &mut LiteSVM) {
@@ -49,10 +49,6 @@ fn instant_user_address(vault: Pubkey, user: Pubkey) -> Pubkey {
         &program_id(),
     )
     .0
-}
-
-fn protocol_fee_config_address() -> Pubkey {
-    Pubkey::find_program_address(&[PROTOCOL_FEE_CONFIG_SEED], &program_id()).0
 }
 
 fn user_asset_account(user: Pubkey, asset_mint: Pubkey) -> Pubkey {
@@ -1696,15 +1692,11 @@ fn test_instant_redeem_protocol_fee_uses_program_config_recipient_when_supplied(
         .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
         .expect("protocol fee config should succeed");
 
-    let protocol_fee_config = protocol_fee_config_address();
-    InitializeProtocolFeeConfigBuilder::new()
-        .payer(authority.pubkey())
-        .authority(authority.pubkey())
-        .protocol_fee_config(protocol_fee_config)
-        .protocol_fee_recipient(configured_protocol_fee_recipient.pubkey())
-        .instruction()
-        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
-        .expect("initialize protocol fee config should succeed");
+    let protocol_fee_config = initialize_and_activate_protocol_fee_config(
+        &mut svm,
+        &authority,
+        configured_protocol_fee_recipient.pubkey(),
+    );
 
     svm.expire_blockhash();
     InstantDepositBuilder::new()

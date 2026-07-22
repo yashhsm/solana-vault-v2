@@ -24,14 +24,8 @@ pub struct UpdateProtocolFeeConfig<'info> {
 }
 
 pub fn handler(
-    ctx: Context<UpdateProtocolFeeConfig>,
-    args: UpdateProtocolFeeConfigArgs,
+    _ctx: Context<UpdateProtocolFeeConfig>,
+    _args: UpdateProtocolFeeConfigArgs,
 ) -> Result<()> {
-    require!(
-        args.protocol_fee_recipient != Pubkey::default(),
-        AsyncVaultError::InvalidFeeRecipient
-    );
-
-    ctx.accounts.protocol_fee_config.protocol_fee_recipient = args.protocol_fee_recipient;
-    Ok(())
+    err!(AsyncVaultError::LegacyProtocolFeeInstructionDisabled)
 }

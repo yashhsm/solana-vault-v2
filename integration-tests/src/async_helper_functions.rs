@@ -10,10 +10,14 @@ use solana_sdk::{
 use solana_system_interface::instruction::create_account;
 
 use async_vault_v2_client::{
-    lite::SendTransaction, sdk::program_id, CreateVaultBuilder as CreateAsyncVaultBuilder, Request,
-    RequestType, UpdateVaultBuilder, Vault as AsyncVault,
+    lite::SendTransaction, sdk::program_id, CreateVaultBuilder as CreateAsyncVaultBuilder,
+    ExecuteProtocolFeeConfigUpdateBuilder, InitializeProtocolFeeConfigV2Builder,
+    PendingProtocolFeeConfigUpdate, ProtocolFeeConfigUpdateArgs,
+    QueueProtocolFeeConfigUpdateBuilder, Request, RequestType, UpdateVaultBuilder,
+    Vault as AsyncVault,
 };
 use borsh::BorshSerialize;
+use std::str::FromStr;
 
 use anchor_spl::{
     associated_token::{
@@ -42,6 +46,85 @@ use spl_token_2022::state::{Account as TokenAccount2022, Mint as Token2022Mint};
 pub const VAULT_CONFIG_SEED: &[u8] = b"vault";
 pub const RESERVE_CONFIG_SEED: &[u8] = b"reserve";
 pub const PENDING_VAULT_SEED: &[u8] = b"pending";
+pub const PROTOCOL_FEE_CONFIG_SEED: &[u8] = b"protocol_fee_config";
+pub const PROTOCOL_FEE_GOVERNANCE_SEED: &[u8] = b"protocol_fee_governance";
+
+/// Securely bootstraps and activates the singleton protocol-fee override for tests.
+/// Production callers should use distinct upgrade, governance, and breaker authorities.
+pub fn initialize_and_activate_protocol_fee_config(
+    svm: &mut LiteSVM,
+    authority: &Keypair,
+    protocol_fee_recipient: Pubkey,
+) -> Pubkey {
+    let upgradeable_loader =
+        Pubkey::from_str("BPFLoaderUpgradeab1e11111111111111111111111").unwrap();
+    let program_data =
+        Pubkey::find_program_address(&[program_id().as_ref()], &upgradeable_loader).0;
+    let mut program_data_account = svm
+        .get_account(&program_data)
+        .expect("program data account should exist");
+    assert_eq!(
+        u32::from_le_bytes(program_data_account.data[0..4].try_into().unwrap()),
+        3,
+        "expected an upgradeable ProgramData account"
+    );
+    assert!(program_data_account.data.len() >= 45);
+    program_data_account.data[12] = 1;
+    program_data_account.data[13..45].copy_from_slice(authority.pubkey().as_ref());
+    svm.set_account(program_data, program_data_account).unwrap();
+
+    let protocol_fee_config =
+        Pubkey::find_program_address(&[PROTOCOL_FEE_CONFIG_SEED], &program_id()).0;
+    let protocol_fee_governance =
+        Pubkey::find_program_address(&[PROTOCOL_FEE_GOVERNANCE_SEED], &program_id()).0;
+    InitializeProtocolFeeConfigV2Builder::new()
+        .payer(authority.pubkey())
+        .upgrade_authority(authority.pubkey())
+        .program_data(program_data)
+        .protocol_fee_config(protocol_fee_config)
+        .protocol_fee_governance(protocol_fee_governance)
+        .authority(authority.pubkey())
+        .breaker(authority.pubkey())
+        .timelock_delay_slots(1)
+        .instruction()
+        .send_transaction(svm, &authority.pubkey(), &[authority])
+        .expect("initialize protocol-fee governance");
+
+    let pending_update = Keypair::new();
+    svm.expire_blockhash();
+    QueueProtocolFeeConfigUpdateBuilder::new()
+        .payer(authority.pubkey())
+        .authority(authority.pubkey())
+        .protocol_fee_config(protocol_fee_config)
+        .protocol_fee_governance(protocol_fee_governance)
+        .pending_update(pending_update.pubkey())
+        .args(ProtocolFeeConfigUpdateArgs {
+            protocol_fee_recipient,
+            timelock_delay_slots: None,
+        })
+        .instruction()
+        .send_transaction(svm, &authority.pubkey(), &[authority, &pending_update])
+        .expect("queue protocol-fee recipient activation");
+    let pending = PendingProtocolFeeConfigUpdate::from_bytes(
+        svm.get_account(&pending_update.pubkey())
+            .expect("pending protocol-fee update")
+            .data(),
+    )
+    .unwrap();
+    let mut clock = svm.get_sysvar::<solana_sdk::clock::Clock>();
+    clock.slot = pending.eta_slot;
+    svm.set_sysvar(&clock);
+    svm.expire_blockhash();
+    ExecuteProtocolFeeConfigUpdateBuilder::new()
+        .executor(authority.pubkey())
+        .protocol_fee_config(protocol_fee_config)
+        .protocol_fee_governance(protocol_fee_governance)
+        .pending_update(pending_update.pubkey())
+        .instruction()
+        .send_transaction(svm, &authority.pubkey(), &[authority])
+        .expect("activate protocol-fee recipient");
+    protocol_fee_config
+}
 
 pub fn create_mint(svm: &mut LiteSVM, signer: &Keypair, mint: &Keypair, token_program: &Pubkey) {
     let rent = svm.minimum_balance_for_rent_exemption(Mint::LEN);

@@ -64,6 +64,10 @@ pub mod lite {
                 ACCEPT_AUTHORITY_INVITATION_DISCRIMINATOR,
                 "accept_authority_invitation",
             ),
+            (
+                ACCEPT_PROTOCOL_FEE_AUTHORITY_TRANSFER_DISCRIMINATOR,
+                "accept_protocol_fee_authority_transfer",
+            ),
             (ADD_VAULT_ASSET_DISCRIMINATOR, "add_vault_asset"),
             (APPROVE_REQUEST_DISCRIMINATOR, "approve_request"),
             (APPROVE_VAULT_VENUE_DISCRIMINATOR, "approve_vault_venue"),
@@ -81,6 +85,14 @@ pub mod lite {
                 "cancel_extension_update",
             ),
             (CANCEL_FEE_UPDATE_DISCRIMINATOR, "cancel_fee_update"),
+            (
+                CANCEL_PROTOCOL_FEE_AUTHORITY_TRANSFER_DISCRIMINATOR,
+                "cancel_protocol_fee_authority_transfer",
+            ),
+            (
+                CANCEL_PROTOCOL_FEE_CONFIG_UPDATE_DISCRIMINATOR,
+                "cancel_protocol_fee_config_update",
+            ),
             (
                 CANCEL_STRATEGY_POLICY_UPDATE_DISCRIMINATOR,
                 "cancel_strategy_policy_update",
@@ -101,6 +113,10 @@ pub mod lite {
                 "execute_extension_update",
             ),
             (EXECUTE_FEE_UPDATE_DISCRIMINATOR, "execute_fee_update"),
+            (
+                EXECUTE_PROTOCOL_FEE_CONFIG_UPDATE_DISCRIMINATOR,
+                "execute_protocol_fee_config_update",
+            ),
             (
                 EXECUTE_STRATEGY_POLICY_UPDATE_DISCRIMINATOR,
                 "execute_strategy_policy_update",
@@ -143,6 +159,10 @@ pub mod lite {
                 "initialize_protocol_fee_config",
             ),
             (
+                INITIALIZE_PROTOCOL_FEE_CONFIG_V2_DISCRIMINATOR,
+                "initialize_protocol_fee_config_v2",
+            ),
+            (
                 INITIALIZE_SUBSCRIPTION_QUEUE_DISCRIMINATOR,
                 "initialize_subscription_queue",
             ),
@@ -164,6 +184,10 @@ pub mod lite {
                 "manage_vault_with_merkle_verification",
             ),
             (PAUSE_STRATEGY_POLICY_DISCRIMINATOR, "pause_strategy_policy"),
+            (
+                PAUSE_PROTOCOL_FEE_CONFIG_DISCRIMINATOR,
+                "pause_protocol_fee_config",
+            ),
             (PAUSE_VAULT_DISCRIMINATOR, "pause_vault"),
             (PULL_VENUE_POSITION_DISCRIMINATOR, "pull_venue_position"),
             (
@@ -171,6 +195,14 @@ pub mod lite {
                 "queue_extension_update",
             ),
             (QUEUE_FEE_UPDATE_DISCRIMINATOR, "queue_fee_update"),
+            (
+                QUEUE_PROTOCOL_FEE_AUTHORITY_TRANSFER_DISCRIMINATOR,
+                "queue_protocol_fee_authority_transfer",
+            ),
+            (
+                QUEUE_PROTOCOL_FEE_CONFIG_UPDATE_DISCRIMINATOR,
+                "queue_protocol_fee_config_update",
+            ),
             (
                 QUEUE_STRATEGY_POLICY_UPDATE_DISCRIMINATOR,
                 "queue_strategy_policy_update",

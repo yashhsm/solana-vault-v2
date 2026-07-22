@@ -84,27 +84,60 @@ Implemented fee fields:
 - Seeds: `[PROTOCOL_FEE_CONFIG_SEED]`
 - Bump field: `protocol_fee_config.bump`
 - Owner: `async_vault_v2`
-- Purpose: singleton program-level protocol fee recipient routing.
+- Purpose: ABI-compatible singleton program-level protocol fee recipient routing.
 
 Fields:
 
-- `authority`: signer allowed to update the config recipient.
+- `authority`: governance signer allowed to queue changes and transfers.
 - `protocol_fee_recipient`: owner required for protocol-fee token accounts when
-  this PDA is supplied.
+  this PDA is supplied. The default public key means the global override is
+  disabled and fee paths fall back to `Vault.protocol_fee_recipient`.
+
+## Protocol Fee Governance
+
+- Account type: `ProtocolFeeGovernance`
+- Seeds: `[PROTOCOL_FEE_GOVERNANCE_SEED]`
+- Bump field: `protocol_fee_governance.bump`
+- Owner: `async_vault_v2`
+- Purpose: sidecar controls for the ABI-stable `ProtocolFeeConfig` account.
+
+Fields:
+
+- `protocol_fee_config`: binds the sidecar to the singleton config PDA.
+- `breaker`: signer allowed to disable the global override immediately.
+- `timelock_delay_slots`: nonzero delay for config and authority changes.
+- `paused`: reports whether the global override is disabled.
+- `version`: increments on executed updates, pauses, and accepted authority
+  transfers; queued operations bind to the version observed at creation.
 
 Implemented instructions:
 
-- `initialize_protocol_fee_config`: creates the singleton PDA with a non-default
-  recipient.
-- `update_protocol_fee_config`: requires the stored `authority` signer and a
-  non-default replacement recipient.
+- `initialize_protocol_fee_config_v2`: requires the deployed program's current
+  upgrade authority, creates or securely adopts the config, creates the
+  governance sidecar, and starts paused with no global override. Adoption
+  overwrites legacy authority/recipient state fail-closed. It must run before
+  making the program immutable if global routing will be used.
+- `queue_protocol_fee_config_update` / `execute_protocol_fee_config_update` /
+  `cancel_protocol_fee_config_update`: version-bound delayed activation or
+  rotation of the recipient and optional future delay.
+- `pause_protocol_fee_config`: current authority or breaker may immediately set
+  the recipient to the default key, disable the override, and invalidate queued
+  operations by incrementing the governance version.
+- `queue_protocol_fee_authority_transfer` /
+  `accept_protocol_fee_authority_transfer` /
+  `cancel_protocol_fee_authority_transfer`: delayed, two-step governance
+  authority transfer that requires the proposed successor's signature.
+- Legacy `initialize_protocol_fee_config` and `update_protocol_fee_config`
+  retain their discriminators for compatibility but always fail; they cannot
+  bypass bootstrap authorization or the timelock.
 
 Fee-paying instructions preserve the vault-level fallback by default. When a
 protocol fee is owed, callers may place the singleton PDA immediately before the
 protocol-fee token account in `remaining_accounts`; approval, instant redeem,
 instant deposit, and performance-fee minting then validate the protocol-fee
 token account against `ProtocolFeeConfig.protocol_fee_recipient` instead of
-`Vault.protocol_fee_recipient`.
+`Vault.protocol_fee_recipient`. A supplied but paused config is consumed in the
+same account position and resolves to the vault-level recipient.
 
 ## Instant Settlement Extension
 

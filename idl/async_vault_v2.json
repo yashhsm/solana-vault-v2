@@ -37,6 +37,102 @@
       "args": []
     },
     {
+      "name": "accept_protocol_fee_authority_transfer",
+      "docs": [
+        "Accepts a queued protocol-fee authority transfer after its ETA."
+      ],
+      "discriminator": [
+        152,
+        7,
+        81,
+        35,
+        145,
+        14,
+        129,
+        5
+      ],
+      "accounts": [
+        {
+          "name": "new_authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol_fee_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "protocol_fee_governance",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_transfer",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "add_vault_asset",
       "docs": [
         "Adds an approved asset mint and its reserve/pending token accounts."
@@ -404,6 +500,200 @@
         },
         {
           "name": "vault"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_protocol_fee_authority_transfer",
+      "docs": [
+        "Cancels a queued protocol-fee authority transfer."
+      ],
+      "discriminator": [
+        148,
+        58,
+        4,
+        213,
+        125,
+        65,
+        32,
+        105
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "protocol_fee_config"
+          ]
+        },
+        {
+          "name": "protocol_fee_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "protocol_fee_governance",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_transfer",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "cancel_protocol_fee_config_update",
+      "docs": [
+        "Cancels a queued protocol-fee recipient update."
+      ],
+      "discriminator": [
+        188,
+        243,
+        237,
+        65,
+        50,
+        156,
+        84,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "protocol_fee_config"
+          ]
+        },
+        {
+          "name": "protocol_fee_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "protocol_fee_governance",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_update",
+          "writable": true
         }
       ],
       "args": []
@@ -1567,6 +1857,102 @@
       "args": []
     },
     {
+      "name": "execute_protocol_fee_config_update",
+      "docs": [
+        "Executes a queued protocol-fee recipient update after its ETA."
+      ],
+      "discriminator": [
+        120,
+        249,
+        144,
+        112,
+        4,
+        52,
+        92,
+        245
+      ],
+      "accounts": [
+        {
+          "name": "executor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "protocol_fee_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "protocol_fee_governance",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_update",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "execute_strategy_policy_update",
       "docs": [
         "Applies a queued policy update after its ETA when its version remains current."
@@ -1984,7 +2370,7 @@
     {
       "name": "initialize_protocol_fee_config",
       "docs": [
-        "Initializes the singleton program-level protocol fee recipient config."
+        "Disabled legacy singleton initializer retained for discriminator compatibility."
       ],
       "discriminator": [
         217,
@@ -2049,6 +2435,122 @@
           "type": {
             "defined": {
               "name": "InitializeProtocolFeeConfigArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_protocol_fee_config_v2",
+      "docs": [
+        "Securely bootstraps or migrates protocol-fee governance using the upgrade authority."
+      ],
+      "discriminator": [
+        170,
+        200,
+        26,
+        121,
+        150,
+        191,
+        167,
+        102
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "upgrade_authority",
+          "signer": true
+        },
+        {
+          "name": "program",
+          "address": "3Y4rpSYqrW9JRuiS3YosEXSSYHai4sFH3XMzAQmkNzFg"
+        },
+        {
+          "name": "program_data"
+        },
+        {
+          "name": "protocol_fee_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "protocol_fee_governance",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "InitializeProtocolFeeConfigV2Args"
             }
           }
         }
@@ -2806,6 +3308,97 @@
       ]
     },
     {
+      "name": "pause_protocol_fee_config",
+      "docs": [
+        "Immediately disables the global recipient override and invalidates stale queues."
+      ],
+      "discriminator": [
+        249,
+        214,
+        106,
+        71,
+        100,
+        160,
+        18,
+        220
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "protocol_fee_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "protocol_fee_governance",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "pause_strategy_policy",
       "docs": [
         "Immediately pauses a policy. The curator or breaker may invoke this path."
@@ -3162,6 +3755,232 @@
           "type": {
             "defined": {
               "name": "FeeUpdateArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "queue_protocol_fee_authority_transfer",
+      "docs": [
+        "Queues a two-step protocol-fee authority transfer."
+      ],
+      "discriminator": [
+        5,
+        202,
+        49,
+        240,
+        237,
+        165,
+        8,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "protocol_fee_config"
+          ]
+        },
+        {
+          "name": "protocol_fee_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "protocol_fee_governance",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_transfer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "new_authority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "queue_protocol_fee_config_update",
+      "docs": [
+        "Queues a recipient activation or rotation under the global fee timelock."
+      ],
+      "discriminator": [
+        165,
+        176,
+        69,
+        207,
+        226,
+        189,
+        66,
+        187
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "protocol_fee_config"
+          ]
+        },
+        {
+          "name": "protocol_fee_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "protocol_fee_governance",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  114,
+                  111,
+                  116,
+                  111,
+                  99,
+                  111,
+                  108,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  103,
+                  111,
+                  118,
+                  101,
+                  114,
+                  110,
+                  97,
+                  110,
+                  99,
+                  101
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pending_update",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "ProtocolFeeConfigUpdateArgs"
             }
           }
         }
@@ -4154,7 +4973,7 @@
     {
       "name": "update_protocol_fee_config",
       "docs": [
-        "Updates the singleton program-level protocol fee recipient config."
+        "Disabled legacy direct updater retained for discriminator compatibility."
       ],
       "discriminator": [
         170,
@@ -4532,6 +5351,32 @@
       ]
     },
     {
+      "name": "PendingProtocolFeeAuthorityTransfer",
+      "discriminator": [
+        54,
+        158,
+        10,
+        225,
+        150,
+        132,
+        241,
+        248
+      ]
+    },
+    {
+      "name": "PendingProtocolFeeConfigUpdate",
+      "discriminator": [
+        26,
+        249,
+        136,
+        110,
+        228,
+        138,
+        163,
+        198
+      ]
+    },
+    {
       "name": "PendingStrategyPolicyUpdate",
       "discriminator": [
         22,
@@ -4581,6 +5426,19 @@
         182,
         21,
         238
+      ]
+    },
+    {
+      "name": "ProtocolFeeGovernance",
+      "discriminator": [
+        18,
+        29,
+        138,
+        121,
+        233,
+        11,
+        223,
+        85
       ]
     },
     {
@@ -4676,6 +5534,84 @@
     }
   ],
   "events": [
+    {
+      "name": "ProtocolFeeAuthorityTransferQueued",
+      "discriminator": [
+        13,
+        85,
+        17,
+        145,
+        29,
+        149,
+        30,
+        166
+      ]
+    },
+    {
+      "name": "ProtocolFeeAuthorityTransferred",
+      "discriminator": [
+        222,
+        207,
+        185,
+        92,
+        169,
+        34,
+        140,
+        200
+      ]
+    },
+    {
+      "name": "ProtocolFeeConfigPaused",
+      "discriminator": [
+        171,
+        180,
+        198,
+        28,
+        2,
+        45,
+        229,
+        156
+      ]
+    },
+    {
+      "name": "ProtocolFeeConfigUpdateQueued",
+      "discriminator": [
+        247,
+        181,
+        99,
+        102,
+        230,
+        99,
+        249,
+        70
+      ]
+    },
+    {
+      "name": "ProtocolFeeConfigUpdated",
+      "discriminator": [
+        7,
+        40,
+        125,
+        188,
+        84,
+        118,
+        214,
+        7
+      ]
+    },
+    {
+      "name": "ProtocolFeeGovernanceInitialized",
+      "discriminator": [
+        128,
+        105,
+        181,
+        28,
+        38,
+        78,
+        51,
+        199
+      ]
+    },
     {
       "name": "StrategyActionExecuted",
       "discriminator": [
@@ -5232,6 +6168,26 @@
       "code": 6097,
       "name": "PolicyIngestionLimitExceeded",
       "msg": "Policy instruction ingestion exceeds the configured byte limit."
+    },
+    {
+      "code": 6098,
+      "name": "LegacyProtocolFeeInstructionDisabled",
+      "msg": "The legacy protocol-fee administration instruction is disabled."
+    },
+    {
+      "code": 6099,
+      "name": "InvalidProtocolFeeGovernance",
+      "msg": "Protocol-fee governance state is invalid."
+    },
+    {
+      "code": 6100,
+      "name": "StaleProtocolFeeGovernanceVersion",
+      "msg": "Protocol-fee governance version is stale."
+    },
+    {
+      "code": 6101,
+      "name": "InvalidProtocolFeeTimelock",
+      "msg": "Protocol-fee governance timelock must be nonzero."
     }
   ],
   "types": [
@@ -5549,6 +6505,26 @@
       }
     },
     {
+      "name": "InitializeProtocolFeeConfigV2Args",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "breaker",
+            "type": "pubkey"
+          },
+          {
+            "name": "timelock_delay_slots",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "InitializeTranchesArgs",
       "type": {
         "kind": "struct",
@@ -5716,6 +6692,82 @@
       }
     },
     {
+      "name": "PendingProtocolFeeAuthorityTransfer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "protocol_fee_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_fee_governance",
+            "type": "pubkey"
+          },
+          {
+            "name": "queued_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "created_slot",
+            "type": "u64"
+          },
+          {
+            "name": "eta_slot",
+            "type": "u64"
+          },
+          {
+            "name": "expected_version",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PendingProtocolFeeConfigUpdate",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "protocol_fee_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_fee_governance",
+            "type": "pubkey"
+          },
+          {
+            "name": "queued_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "created_slot",
+            "type": "u64"
+          },
+          {
+            "name": "eta_slot",
+            "type": "u64"
+          },
+          {
+            "name": "expected_version",
+            "type": "u64"
+          },
+          {
+            "name": "args",
+            "type": {
+              "defined": {
+                "name": "ProtocolFeeConfigUpdateArgs"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "PendingStrategyPolicyUpdate",
       "type": {
         "kind": "struct",
@@ -5870,6 +6922,70 @@
       }
     },
     {
+      "name": "ProtocolFeeAuthorityTransferQueued",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "protocol_fee_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_fee_governance",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_transfer",
+            "type": "pubkey"
+          },
+          {
+            "name": "current_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "expected_version",
+            "type": "u64"
+          },
+          {
+            "name": "eta_slot",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolFeeAuthorityTransferred",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "protocol_fee_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_fee_governance",
+            "type": "pubkey"
+          },
+          {
+            "name": "previous_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "version",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
       "name": "ProtocolFeeConfig",
       "docs": [
         "Program-wide protocol fee routing config."
@@ -5894,6 +7010,199 @@
           {
             "name": "bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolFeeConfigPaused",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "protocol_fee_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_fee_governance",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "version",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolFeeConfigUpdateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "protocol_fee_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "timelock_delay_slots",
+            "type": {
+              "option": "u64"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolFeeConfigUpdateQueued",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "protocol_fee_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_fee_governance",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_update",
+            "type": "pubkey"
+          },
+          {
+            "name": "queued_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "expected_version",
+            "type": "u64"
+          },
+          {
+            "name": "eta_slot",
+            "type": "u64"
+          },
+          {
+            "name": "protocol_fee_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "timelock_delay_slots",
+            "type": {
+              "option": "u64"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolFeeConfigUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "protocol_fee_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_fee_governance",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_fee_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "timelock_delay_slots",
+            "type": "u64"
+          },
+          {
+            "name": "version",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolFeeGovernance",
+      "docs": [
+        "Governance sidecar for the singleton protocol-fee recipient override.",
+        "",
+        "Kept separate so the original `ProtocolFeeConfig` account layout remains",
+        "stable. A paused override is represented both here and by a default",
+        "recipient on `ProtocolFeeConfig`, allowing the hot fee path to fall back to",
+        "the vault-local recipient without loading another account."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "protocol_fee_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "breaker",
+            "docs": [
+              "Independent emergency key that may disable, but never enable, the override."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "timelock_delay_slots",
+            "docs": [
+              "Delay used by recipient updates and authority transfers."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "version",
+            "docs": [
+              "Incremented by every executed update, authority transfer, or emergency pause."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProtocolFeeGovernanceInitialized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "protocol_fee_config",
+            "type": "pubkey"
+          },
+          {
+            "name": "protocol_fee_governance",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "breaker",
+            "type": "pubkey"
+          },
+          {
+            "name": "timelock_delay_slots",
+            "type": "u64"
           }
         ]
       }

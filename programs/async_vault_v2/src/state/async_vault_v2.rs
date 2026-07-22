@@ -19,6 +19,26 @@ pub struct ProtocolFeeConfig {
     pub bump: u8,
 }
 
+/// Governance sidecar for the singleton protocol-fee recipient override.
+///
+/// Kept separate so the original `ProtocolFeeConfig` account layout remains
+/// stable. A paused override is represented both here and by a default
+/// recipient on `ProtocolFeeConfig`, allowing the hot fee path to fall back to
+/// the vault-local recipient without loading another account.
+#[account]
+#[derive(InitSpace)]
+pub struct ProtocolFeeGovernance {
+    pub protocol_fee_config: Pubkey,
+    /// Independent emergency key that may disable, but never enable, the override.
+    pub breaker: Pubkey,
+    /// Delay used by recipient updates and authority transfers.
+    pub timelock_delay_slots: u64,
+    pub paused: bool,
+    /// Incremented by every executed update, authority transfer, or emergency pause.
+    pub version: u64,
+    pub bump: u8,
+}
+
 /// NAV validation mode configured for a vault.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, InitSpace, PartialEq, Eq)]
 pub enum NavMode {

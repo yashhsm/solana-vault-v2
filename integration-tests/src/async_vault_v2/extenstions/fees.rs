@@ -2,9 +2,9 @@ use anchor_spl::{associated_token::get_associated_token_address_with_program_id,
 use async_vault_v2_client::{
     lite::SendTransaction, sdk::program_id, ApproveRequestBuilder, CreateDepositRequestBuilder,
     CreateRedeemRequestBuilder, FeeType, InitializeDepositFeeBuilder,
-    InitializeProtocolFeeConfigBuilder, InitializeVaultBuilder as InitializeAsyncVaultBuilder,
-    InitializeWithdrawalFeeBuilder, Request, RequestArgs, RequestState,
-    UpdateVaultBuilder as UpdateVaultAsyncBuilder, UpdateVaultNavBuilder, Vault,
+    InitializeVaultBuilder as InitializeAsyncVaultBuilder, InitializeWithdrawalFeeBuilder, Request,
+    RequestArgs, RequestState, UpdateVaultBuilder as UpdateVaultAsyncBuilder,
+    UpdateVaultNavBuilder, Vault,
 };
 use litesvm::LiteSVM;
 use solana_sdk::{
@@ -16,7 +16,8 @@ use test_case::test_case;
 use crate::{
     async_helper_functions::{
         approve_request_args, assert_error_code, create_ata, get_token_account_amount,
-        helper_mint_to, set_share_balance, set_up_async_vault_v2, set_vault_total_asset_balance,
+        helper_mint_to, initialize_and_activate_protocol_fee_config, set_share_balance,
+        set_up_async_vault_v2, set_vault_total_asset_balance,
     },
     async_vault_v2::constants::{
         INSUFFICIENT_DEPOSIT_AMOUNT, MISSING_FEE_RECIPIENT, ROLLING_LIMIT_EXCEEDED,
@@ -25,12 +26,6 @@ use crate::{
 
 // NAV: 200_000_000_000 with 9 decimals → shares = assets/200, assets = shares*200
 const NAV: u128 = 200_000_000_000;
-const PROTOCOL_FEE_CONFIG_SEED: &[u8] = b"protocol_fee_config";
-
-fn protocol_fee_config_pda() -> Pubkey {
-    Pubkey::find_program_address(&[PROTOCOL_FEE_CONFIG_SEED], &program_id()).0
-}
-
 #[allow(clippy::too_many_arguments)]
 fn setup_with_fees(
     deposit_fee: Option<FeeType>,
@@ -424,15 +419,11 @@ fn test_approve_deposit_protocol_fee_uses_program_config_recipient_when_supplied
         2_500,
     );
 
-    let protocol_fee_config = protocol_fee_config_pda();
-    InitializeProtocolFeeConfigBuilder::new()
-        .payer(authority.pubkey())
-        .authority(authority.pubkey())
-        .protocol_fee_config(protocol_fee_config)
-        .protocol_fee_recipient(configured_protocol_fee_recipient.pubkey())
-        .instruction()
-        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
-        .expect("initialize protocol fee config should succeed");
+    let protocol_fee_config = initialize_and_activate_protocol_fee_config(
+        &mut svm,
+        &authority,
+        configured_protocol_fee_recipient.pubkey(),
+    );
 
     let user_asset_account = get_associated_token_address_with_program_id(
         &user.pubkey(),

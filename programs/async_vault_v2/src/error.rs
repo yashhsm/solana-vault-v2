@@ -198,6 +198,14 @@ pub enum AsyncVaultError {
     ReentrantStrategyCall,
     #[msg("Policy instruction ingestion exceeds the configured byte limit.")]
     PolicyIngestionLimitExceeded,
+    #[msg("The legacy protocol-fee administration instruction is disabled.")]
+    LegacyProtocolFeeInstructionDisabled,
+    #[msg("Protocol-fee governance state is invalid.")]
+    InvalidProtocolFeeGovernance,
+    #[msg("Protocol-fee governance version is stale.")]
+    StaleProtocolFeeGovernanceVersion,
+    #[msg("Protocol-fee governance timelock must be nonzero.")]
+    InvalidProtocolFeeTimelock,
 }
 
 impl From<vault_common::VaultMathError> for AsyncVaultError {

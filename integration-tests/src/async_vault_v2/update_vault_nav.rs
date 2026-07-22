@@ -1,7 +1,7 @@
 use anchor_spl::token;
 use async_vault_v2_client::{
-    lite::SendTransaction, sdk::program_id, InitializeProtocolFeeConfigBuilder, NavMode,
-    UpdateVaultBuilder, UpdateVaultNavBuilder, Vault,
+    lite::SendTransaction, sdk::program_id, NavMode, UpdateVaultBuilder, UpdateVaultNavBuilder,
+    Vault,
 };
 use borsh::BorshSerialize;
 use litesvm::LiteSVM;
@@ -14,19 +14,13 @@ use test_case::test_case;
 use crate::{
     async_helper_functions::{
         assert_error_code, create_ata, get_mint_supply, get_token_account_amount,
-        set_share_balance, set_up_async_vault_v2,
+        initialize_and_activate_protocol_fee_config, set_share_balance, set_up_async_vault_v2,
     },
     async_vault_v2::constants::{
         ARITHMETIC_ERROR, INVALID_ROLLING_LIMIT_CONFIG, MISSING_REQUIRED_ACCOUNT, NAV_APY_EXCEEDED,
         NAV_DELTA_EXCEEDED, UNAUTHORIZED_SIGNER, UNSUPPORTED_PHASE_CONFIG,
     },
 };
-
-const PROTOCOL_FEE_CONFIG_SEED: &[u8] = b"protocol_fee_config";
-
-fn protocol_fee_config_pda() -> solana_sdk::pubkey::Pubkey {
-    solana_sdk::pubkey::Pubkey::find_program_address(&[PROTOCOL_FEE_CONFIG_SEED], &program_id()).0
-}
 
 #[test_case(200 ; "update nav succeeds")]
 #[test_case(0 ; "update nav to zero succeeds")]
@@ -419,15 +413,11 @@ fn test_update_vault_nav_protocol_fee_uses_program_config_recipient_when_supplie
         .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
         .expect("set performance and protocol fee should succeed");
 
-    let protocol_fee_config = protocol_fee_config_pda();
-    InitializeProtocolFeeConfigBuilder::new()
-        .payer(authority.pubkey())
-        .authority(authority.pubkey())
-        .protocol_fee_config(protocol_fee_config)
-        .protocol_fee_recipient(configured_protocol_fee_recipient.pubkey())
-        .instruction()
-        .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
-        .expect("initialize protocol fee config should succeed");
+    let protocol_fee_config = initialize_and_activate_protocol_fee_config(
+        &mut svm,
+        &authority,
+        configured_protocol_fee_recipient.pubkey(),
+    );
 
     svm.expire_blockhash();
     UpdateVaultNavBuilder::new()

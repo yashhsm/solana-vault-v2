@@ -8,7 +8,7 @@ It implements a tokenized vault with a NAV-based async deposit/redeem lifecycle
 and layers on the control surface a real fund needs:
 role-separated operations, stricter NAV-based settlement, multi-asset
 accounting, venue approval metadata, tranche accounting, instant settlement, and
-protocol fee routing with an optional program-level recipient config. An opt-in
+protocol fee routing with an optional, timelocked program-level recipient config. An opt-in
 Merkle strategy policy can additionally constrain vault-signed venue CPIs.
 
 > Reference implementation only. Unaudited, not deployed to mainnet-beta, and
@@ -35,7 +35,8 @@ The current implementation focuses on testable on-chain primitives:
 - constrained SPL token-account position stubs
 - senior/junior tranche accounting and tranche-scoped async requests
 - primary-asset instant deposit/redeem flows
-- vault-level protocol fee bps with optional program-level recipient routing
+- vault-level protocol fee bps with upgrade-authority bootstrap, timelocked
+  program-level recipient routing, breaker pause, and two-step authority transfer
 
 ## Use Cases
 
@@ -109,7 +110,8 @@ flowchart TD
     Vault --> Policies
     Vault --> Tranches[TrancheConfig PDA]
     Vault --> Fees[Fee recipients]
-    ProtocolConfig[ProtocolFeeConfig PDA] --> Fees
+    ProtocolGovernance[ProtocolFeeGovernance PDA] --> ProtocolConfig[ProtocolFeeConfig PDA]
+    ProtocolConfig --> Fees
 
     Assets --> Positions
     Venues --> Positions
@@ -138,8 +140,11 @@ flowchart TD
   `PendingStrategyPolicyUpdate`: typed timelock queues for delayed config changes.
 - `InstantSettlementUser`: optional per-user instant settlement rolling-limit
   bucket.
-- `ProtocolFeeConfig`: singleton program-level recipient override for protocol
-  fee token accounts. Vault-level `protocol_fee_recipient` remains the fallback.
+- `ProtocolFeeConfig` and `ProtocolFeeGovernance`: singleton program-level
+  recipient override plus versioned timelock/breaker controls. Vault-level
+  `protocol_fee_recipient` remains the fallback while the override is paused.
+- `PendingProtocolFeeConfigUpdate` and `PendingProtocolFeeAuthorityTransfer`:
+  delayed, cancellable program-level recipient/config and two-step authority changes.
 
 ### Program Shape
 
@@ -154,8 +159,8 @@ Implemented or partially implemented:
 
 - Phase 0 fork baseline, rename, clients, IDL, program ID, and provenance docs.
 - Phase 1 roles, fresh NAV, NAV bounds, deposit caps, rolling limits,
-  timelocks, fee queues, performance fees, protocol fee splits, and singleton
-  protocol fee recipient routing.
+  timelocks, fee queues, performance fees, protocol fee splits, and securely
+  bootstrapped singleton protocol fee recipient routing.
 - Phase 2 approved secondary-asset PDAs, request unwind paths, and fail-closed
   secondary approvals until USD-normalized pricing exists.
 - Phase 3 externally managed withdrawal opt-in, venue metadata, per-vault venue
@@ -178,10 +183,13 @@ Not implemented yet:
 - vault-in-vault cycle prevention
 - secondary-asset or tranche-aware instant settlement
 - tranche-aware performance fees and high-water marks
-- program-wide protocol fee bps override and authority-transfer policy
+- program-wide protocol fee bps override
 
 See [docs/SPEC_COVERAGE.md](docs/SPEC_COVERAGE.md) for the requirement-by-
 requirement coverage table.
+
+See [Protocol Fee Governance](docs/PROTOCOL_FEE_GOVERNANCE.md) for the singleton
+bootstrap, activation, pause, rotation, and authority-transfer flows.
 
 ## Quickstart
 

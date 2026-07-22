@@ -1,5 +1,6 @@
 pub const VAULT_CONFIG_SEED: &[u8] = b"vault";
 pub const PROTOCOL_FEE_CONFIG_SEED: &[u8] = b"protocol_fee_config";
+pub const PROTOCOL_FEE_GOVERNANCE_SEED: &[u8] = b"protocol_fee_governance";
 pub const RESERVE_CONFIG_SEED: &[u8] = b"reserve";
 pub const PENDING_VAULT_SEED: &[u8] = b"pending";
 pub const ASSET_CONFIG_SEED: &[u8] = b"asset";
