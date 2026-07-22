@@ -183,6 +183,10 @@ pub mod lite {
                 MANAGE_VAULT_WITH_MERKLE_VERIFICATION_DISCRIMINATOR,
                 "manage_vault_with_merkle_verification",
             ),
+            (
+                MANAGE_VAULT_WITH_TOKEN_BALANCE_ADAPTER_DISCRIMINATOR,
+                "manage_vault_with_token_balance_adapter",
+            ),
             (PAUSE_STRATEGY_POLICY_DISCRIMINATOR, "pause_strategy_policy"),
             (
                 PAUSE_PROTOCOL_FEE_CONFIG_DISCRIMINATOR,

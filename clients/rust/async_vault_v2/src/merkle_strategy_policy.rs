@@ -2,10 +2,12 @@ use solana_address::Address;
 use solana_sha256_hasher::hash;
 use thiserror::Error;
 
-use crate::{PolicyOperator, ASYNC_VAULT_V2_ID};
+use crate::{PolicyOperator, TokenBalanceAdapterAction, ASYNC_VAULT_V2_ID};
 
 pub const STRATEGY_LEAF_DOMAIN: &[u8] = b"async-vault-v2/strategy-policy-leaf/v1";
 pub const STRATEGY_NODE_DOMAIN: &[u8] = b"async-vault-v2/strategy-policy-node/v1";
+pub const TOKEN_BALANCE_ADAPTER_LEAF_DOMAIN: &[u8] =
+    b"async-vault-v2/token-balance-adapter-leaf/v1";
 pub const MAX_CPI_ACCOUNTS: usize = 64;
 pub const MAX_INSTRUCTION_DATA_LEN: usize = 1024;
 pub const MAX_POLICY_OPERATORS: usize = 32;
@@ -54,6 +56,56 @@ impl<'a> StrategyPolicyLeaf<'a> {
     }
 }
 
+pub struct TokenBalanceAdapterLeaf {
+    pub program_address: Address,
+    pub vault: Address,
+    pub strategist: Address,
+    pub policy_version: u64,
+    pub venue_entry: Address,
+    pub vault_venue: Address,
+    pub target_program: Address,
+    pub action: TokenBalanceAdapterAction,
+    pub asset_mint: Address,
+    pub vault_token_account: Address,
+    pub position: Address,
+    pub position_token_account: Address,
+    pub policy_max_amount: u64,
+}
+
+impl TokenBalanceAdapterLeaf {
+    #[allow(clippy::too_many_arguments)]
+    pub fn for_async_vault(
+        vault: Address,
+        strategist: Address,
+        policy_version: u64,
+        venue_entry: Address,
+        vault_venue: Address,
+        target_program: Address,
+        action: TokenBalanceAdapterAction,
+        asset_mint: Address,
+        vault_token_account: Address,
+        position: Address,
+        position_token_account: Address,
+        policy_max_amount: u64,
+    ) -> Self {
+        Self {
+            program_address: ASYNC_VAULT_V2_ID,
+            vault,
+            strategist,
+            policy_version,
+            venue_entry,
+            vault_venue,
+            target_program,
+            action,
+            asset_mint,
+            vault_token_account,
+            position,
+            position_token_account,
+            policy_max_amount,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct StrategyPolicyMerkleTree {
     /// Lexicographically sorted leaves. Proof indexes refer to this order.
@@ -85,6 +137,8 @@ pub enum StrategyPolicyHashError {
     TreeTooLarge,
     #[error("sorted leaf index is out of bounds")]
     LeafIndexOutOfBounds,
+    #[error("token-balance adapter maximum amount must be nonzero")]
+    InvalidAdapterMaxAmount,
 }
 
 pub fn normalize_policy_accounts(
@@ -183,6 +237,34 @@ pub fn hash_strategy_policy_leaf(
         }
     }
 
+    Ok(hash(&bytes).to_bytes())
+}
+
+pub fn hash_token_balance_adapter_leaf(
+    input: TokenBalanceAdapterLeaf,
+) -> Result<[u8; 32], StrategyPolicyHashError> {
+    if input.policy_max_amount == 0 {
+        return Err(StrategyPolicyHashError::InvalidAdapterMaxAmount);
+    }
+    let action = match input.action {
+        TokenBalanceAdapterAction::Deploy => 0,
+        TokenBalanceAdapterAction::Pull => 1,
+    };
+    let mut bytes = Vec::with_capacity(TOKEN_BALANCE_ADAPTER_LEAF_DOMAIN.len() + 32 * 10 + 17);
+    bytes.extend_from_slice(TOKEN_BALANCE_ADAPTER_LEAF_DOMAIN);
+    bytes.extend_from_slice(&input.program_address.to_bytes());
+    bytes.extend_from_slice(&input.vault.to_bytes());
+    bytes.extend_from_slice(&input.strategist.to_bytes());
+    bytes.extend_from_slice(&input.policy_version.to_le_bytes());
+    bytes.extend_from_slice(&input.venue_entry.to_bytes());
+    bytes.extend_from_slice(&input.vault_venue.to_bytes());
+    bytes.extend_from_slice(&input.target_program.to_bytes());
+    bytes.push(action);
+    bytes.extend_from_slice(&input.asset_mint.to_bytes());
+    bytes.extend_from_slice(&input.vault_token_account.to_bytes());
+    bytes.extend_from_slice(&input.position.to_bytes());
+    bytes.extend_from_slice(&input.position_token_account.to_bytes());
+    bytes.extend_from_slice(&input.policy_max_amount.to_le_bytes());
     Ok(hash(&bytes).to_bytes())
 }
 
@@ -332,6 +414,108 @@ mod tests {
                 "d925c25360e7d800278163511eb9742bedbb5fdf9640323afa9814c3840d77f0",
                 "8b88aadfa6a0dc942d584d37d30895e891fb6e34900b5d30ebd679b33ef282e5",
             ]
+        );
+    }
+
+    #[test]
+    fn token_balance_adapter_hash_vector_is_stable() {
+        let system = Address::from_str_const("11111111111111111111111111111111");
+        let clock = Address::from_str_const("SysvarC1ock11111111111111111111111111111111");
+        let token = Address::from_str_const("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+        let associated = Address::from_str_const("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+        let loader = Address::from_str_const("BPFLoaderUpgradeab1e11111111111111111111111");
+        let vote = Address::from_str_const("Vote111111111111111111111111111111111111111");
+        let stake = Address::from_str_const("Stake11111111111111111111111111111111111111");
+        let compute = Address::from_str_const("ComputeBudget111111111111111111111111111111");
+        let leaf = hash_token_balance_adapter_leaf(TokenBalanceAdapterLeaf::for_async_vault(
+            system,
+            clock,
+            7,
+            associated,
+            loader,
+            token,
+            TokenBalanceAdapterAction::Deploy,
+            vote,
+            stake,
+            compute,
+            clock,
+            250,
+        ))
+        .unwrap();
+
+        assert_eq!(
+            hex(leaf),
+            "4c0920146de6af2cfc03030a24a4cf10d835a76bdafccc86394602928c4f066e"
+        );
+    }
+
+    #[test]
+    fn token_balance_adapter_leaf_binds_action_accounts_version_and_maximum() {
+        let address = |byte: u8| Address::new_from_array([byte; 32]);
+        let baseline = || {
+            TokenBalanceAdapterLeaf::for_async_vault(
+                address(1),
+                address(2),
+                1,
+                address(3),
+                address(4),
+                address(5),
+                TokenBalanceAdapterAction::Deploy,
+                address(6),
+                address(7),
+                address(8),
+                address(9),
+                100,
+            )
+        };
+        let baseline_hash = hash_token_balance_adapter_leaf(baseline()).unwrap();
+
+        let mut changed = baseline();
+        changed.action = TokenBalanceAdapterAction::Pull;
+        assert_ne!(
+            hash_token_balance_adapter_leaf(changed).unwrap(),
+            baseline_hash
+        );
+        let mut changed = baseline();
+        changed.position_token_account = address(10);
+        assert_ne!(
+            hash_token_balance_adapter_leaf(changed).unwrap(),
+            baseline_hash
+        );
+        let mut changed = baseline();
+        changed.policy_version = 2;
+        assert_ne!(
+            hash_token_balance_adapter_leaf(changed).unwrap(),
+            baseline_hash
+        );
+        let mut changed = baseline();
+        changed.policy_max_amount = 101;
+        assert_ne!(
+            hash_token_balance_adapter_leaf(changed).unwrap(),
+            baseline_hash
+        );
+    }
+
+    #[test]
+    fn token_balance_adapter_client_rejects_zero_maximum() {
+        let address = |byte: u8| Address::new_from_array([byte; 32]);
+        let input = TokenBalanceAdapterLeaf::for_async_vault(
+            address(1),
+            address(2),
+            1,
+            address(3),
+            address(4),
+            address(5),
+            TokenBalanceAdapterAction::Deploy,
+            address(6),
+            address(7),
+            address(8),
+            address(9),
+            0,
+        );
+        assert_eq!(
+            hash_token_balance_adapter_leaf(input),
+            Err(StrategyPolicyHashError::InvalidAdapterMaxAmount)
         );
     }
 }

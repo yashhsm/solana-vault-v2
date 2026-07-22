@@ -1,9 +1,15 @@
 import { getAddressEncoder, type Address, type ReadonlyUint8Array } from '@solana/kit';
 
-import { ASYNC_VAULT_V2_PROGRAM_ADDRESS, type PolicyOperatorArgs } from './generated';
+import {
+    ASYNC_VAULT_V2_PROGRAM_ADDRESS,
+    type PolicyOperatorArgs,
+    TokenBalanceAdapterAction,
+    type TokenBalanceAdapterActionArgs,
+} from './generated';
 
 const LEAF_DOMAIN = new TextEncoder().encode('async-vault-v2/strategy-policy-leaf/v1');
 const NODE_DOMAIN = new TextEncoder().encode('async-vault-v2/strategy-policy-node/v1');
+const TOKEN_BALANCE_ADAPTER_LEAF_DOMAIN = new TextEncoder().encode('async-vault-v2/token-balance-adapter-leaf/v1');
 const MAX_CPI_ACCOUNTS = 64;
 const MAX_INSTRUCTION_DATA_LENGTH = 1024;
 const MAX_OPERATORS = 32;
@@ -26,6 +32,22 @@ export type StrategyPolicyLeafInput = {
     instructionData: ReadonlyUint8Array;
     accounts: readonly StrategyPolicyAccountMeta[];
     operators: readonly PolicyOperatorArgs[];
+    programAddress?: Address;
+};
+
+export type TokenBalanceAdapterLeafInput = {
+    vault: Address;
+    strategist: Address;
+    policyVersion: number | bigint;
+    venueEntry: Address;
+    vaultVenue: Address;
+    targetProgram: Address;
+    action: TokenBalanceAdapterActionArgs;
+    assetMint: Address;
+    vaultTokenAccount: Address;
+    position: Address;
+    positionTokenAccount: Address;
+    policyMaxAmount: number | bigint;
     programAddress?: Address;
 };
 
@@ -147,6 +169,42 @@ export async function hashStrategyPolicyLeaf(input: StrategyPolicyLeafInput): Pr
     return sha256(concatBytes(bytes));
 }
 
+/** Reconstructs the exact leaf for the balance-checked SPL token position adapter. */
+export async function hashTokenBalanceAdapterLeaf(input: TokenBalanceAdapterLeafInput): Promise<ReadonlyUint8Array> {
+    const version = checkedU64(input.policyVersion, 'policyVersion');
+    const policyMaxAmount = checkedU64(input.policyMaxAmount, 'policyMaxAmount');
+    assertRange(policyMaxAmount > 0n, 'policyMaxAmount must be nonzero');
+    const action = (() => {
+        switch (input.action) {
+            case TokenBalanceAdapterAction.Deploy:
+                return 0;
+            case TokenBalanceAdapterAction.Pull:
+                return 1;
+            default:
+                throw new RangeError('unsupported token-balance adapter action');
+        }
+    })();
+
+    return sha256(
+        concatBytes([
+            TOKEN_BALANCE_ADAPTER_LEAF_DOMAIN,
+            addressEncoder.encode(input.programAddress ?? ASYNC_VAULT_V2_PROGRAM_ADDRESS),
+            addressEncoder.encode(input.vault),
+            addressEncoder.encode(input.strategist),
+            encodeU64(version),
+            addressEncoder.encode(input.venueEntry),
+            addressEncoder.encode(input.vaultVenue),
+            addressEncoder.encode(input.targetProgram),
+            Uint8Array.of(action),
+            addressEncoder.encode(input.assetMint),
+            addressEncoder.encode(input.vaultTokenAccount),
+            addressEncoder.encode(input.position),
+            addressEncoder.encode(input.positionTokenAccount),
+            encodeU64(policyMaxAmount),
+        ]),
+    );
+}
+
 /** Builds the same sorted-pair Merkle tree accepted by the on-chain verifier. */
 export async function buildStrategyPolicyMerkleTree(
     leafHashes: readonly ReadonlyUint8Array[],
@@ -240,6 +298,18 @@ function encodeU64(value: bigint): Uint8Array {
     const bytes = new Uint8Array(8);
     new DataView(bytes.buffer).setBigUint64(0, value, true);
     return bytes;
+}
+
+function checkedU64(value: number | bigint, name: string): bigint {
+    if (typeof value === 'number') {
+        assertRange(
+            Number.isSafeInteger(value),
+            `numeric ${name} must be a safe integer; use bigint for larger values`,
+        );
+    }
+    const result = BigInt(value);
+    assertRange(result >= 0n && result <= MAX_U64, `${name} must fit in a u64`);
+    return result;
 }
 
 async function sha256(bytes: Uint8Array): Promise<ReadonlyUint8Array> {

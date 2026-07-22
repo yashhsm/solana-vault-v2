@@ -6,8 +6,10 @@ import {
     buildStrategyPolicyMerkleTree,
     getStrategyPolicyProof,
     hashStrategyPolicyLeaf,
+    hashTokenBalanceAdapterLeaf,
     normalizeStrategyPolicyAccounts,
     type PolicyOperatorArgs,
+    TokenBalanceAdapterAction,
 } from '../clients/typescript/src/index.js';
 
 async function main(): Promise<void> {
@@ -45,6 +47,22 @@ async function main(): Promise<void> {
         'd925c25360e7d800278163511eb9742bedbb5fdf9640323afa9814c3840d77f0',
         '8b88aadfa6a0dc942d584d37d30895e891fb6e34900b5d30ebd679b33ef282e5',
     ]);
+
+    const adapterLeaf = await hashTokenBalanceAdapterLeaf({
+        action: TokenBalanceAdapterAction.Deploy,
+        assetMint: address('Vote111111111111111111111111111111111111111'),
+        policyMaxAmount: 250,
+        policyVersion: 7,
+        position: address('ComputeBudget111111111111111111111111111111'),
+        positionTokenAccount: strategist,
+        strategist,
+        targetProgram,
+        vault,
+        vaultTokenAccount: address('Stake11111111111111111111111111111111111111'),
+        vaultVenue: address('BPFLoaderUpgradeab1e11111111111111111111111'),
+        venueEntry: address('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'),
+    });
+    assert.equal(hex(adapterLeaf), '4c0920146de6af2cfc03030a24a4cf10d835a76bdafccc86394602928c4f066e');
 }
 
 function hex(value: ReadonlyUint8Array): string {

@@ -29,9 +29,12 @@ flowchart LR
     R --> V
     V --> Q{"Proof, venue, role, and limits valid?"}
     Q -- "No" --> X["Reject"]
-    Q -- "Yes" --> I["Vault PDA invoke_signed"]
+    Q -- "Yes" --> K{"Execution surface"}
+    K -- "Generic CPI" --> N["Reject writable vault token accounts"]
+    N --> I["Vault PDA invoke_signed"]
     I --> E["External venue program"]
     E --> G["Post-CPI share-supply invariant"]
+    K -- "Typed adapter" --> D["Exact token deltas and ledger reconciliation"]
 ```
 
 The curator remains trusted to construct a safe policy. The strategist, proof service, RPC,
@@ -137,11 +140,13 @@ venue calls before that leaf count is reached. Both shipped client helpers rejec
 6. Require an executable, non-self target and an approved eight-byte venue discriminator.
 7. Normalize CPI account privileges, apply bounded operators, and reconstruct the leaf.
 8. Verify the Merkle proof against the stored root.
-9. Apply the amount selected by `ManagerLimitAmount` to the existing manager rolling limit.
-10. Snapshot share-mint supply.
-11. Invoke the target program with the vault PDA as the only program-derived signer.
-12. Reload the share mint and require supply to remain constant.
-13. Emit the policy version, leaf, target program, and account count.
+9. Reject the generic path if any writable SPL Token or Token-2022 account is controlled by the
+   vault PDA; custody movement must use a typed adapter.
+10. Apply the amount selected by `ManagerLimitAmount` to the existing manager rolling limit.
+11. Snapshot share-mint supply.
+12. Invoke the target program with the vault PDA as the only program-derived signer.
+13. Reload the share mint and require supply to remain constant.
+14. Emit the policy version, leaf, target program, and account count.
 
 Solana transaction atomicity rolls back both the CPI and policy/limit state if any post-CPI check
 fails. The program flushes the policy reentrancy flag and any consumed rolling-limit state before
@@ -161,9 +166,17 @@ It does not:
 - make a poorly constructed curator policy safe; or
 - remove Solana transaction-size, compute-budget, or CPI-depth constraints.
 
-Protocol adapters should layer semantic validation and post-CPI balance accounting on top of this
-authorization primitive. Account-heavy integrations may prefer a two-step permit PDA or Veda SVM's
-per-digest PDA model when proof bytes do not fit comfortably in one transaction.
+The shipped `manage_vault_with_token_balance_adapter` is the first typed reference adapter. It uses
+a separately domain-separated leaf that binds the canonical reserve, `Position`, position token
+account, asset mint, action, venue records, and per-call maximum. It permits a dynamic amount only
+when `0 < amount <= policy_max_amount`, verifies exact opposing token-account deltas, reconciles
+primary or secondary ledgers, and preserves share supply. It does not call a lending market, AMM,
+or other external strategy.
+
+Further protocol adapters should layer semantic validation and post-CPI balance accounting on top
+of this authorization primitive. Account-heavy integrations may prefer a two-step permit PDA or
+Veda SVM's per-digest PDA model when proof bytes do not fit comfortably in one transaction. See
+[`STRATEGY_ADAPTERS.md`](STRATEGY_ADAPTERS.md) for the adapter leaf and extension checklist.
 
 ## Verification matrix
 
@@ -174,11 +187,14 @@ The current unit and LiteSVM suites cover:
 - policy initialization, immediate activation, timelocked root rotation, and immediate pause;
 - stale queued-update invalidation on emergency pause and pending-update cleanup after policy close;
 - rejection when a committed CPI account is changed;
-- valid proof plus manager rolling-limit failure;
-- successful vault-PDA-signed SPL Token transfer; and
+- rejection when generic CPI attempts to write a vault-owned token account;
+- typed primary deploy/pull with exact reserve, position, stored-ledger, and rolling-limit updates;
+- typed secondary deploy/pull with `VaultAsset` idle/deployed and per-asset limit reconciliation;
+- adapter per-call maximum, declared-maximum proof binding, cumulative rolling-limit, and stale-ledger
+  failures;
 - rollback when an otherwise valid SPL Token CPI changes share supply;
 - rejection of managed calls and policy mutation while the execution guard is set; and
-- a shared golden leaf/root/proof vector in the Rust and TypeScript helpers.
+- shared generic and typed-adapter golden vectors in the Rust and TypeScript helpers.
 
 ## Primary inspiration
 

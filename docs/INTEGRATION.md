@@ -197,15 +197,24 @@ Venue registry state and the optional Merkle execution boundary work as follows:
    `manage_vault_with_merkle_verification` with the target instruction, ordered
    CPI accounts, leaf operators, policy version, and proof. The program checks
    venue/role/pause state, reconstructs and verifies the leaf, applies a selected
-   manager-limit amount, signs the CPI as the vault PDA, and checks that share
-   supply did not change.
+   manager-limit amount, rejects writable vault-owned token accounts, signs the
+   CPI as the vault PDA, and checks that share supply did not change.
+10. Vault custody movement uses `manage_vault_with_token_balance_adapter`
+    instead. Its domain-separated leaf fixes the canonical reserve, asset mint,
+    `Position`, position token account, action, venue records, and per-call
+    maximum while allowing a bounded dynamic amount. The instruction verifies
+    exact opposing token deltas and reconciles `Position` plus secondary
+    `VaultAsset` ledgers.
 
 The Merkle path is a generic capability boundary, not a protocol accounting
 adapter. It does not infer economic meaning from unselected bytes, update
 `Position`/`VaultAsset` ledgers for arbitrary calls, prove an upgradeable target
 is safe, or prevent vault-in-vault cycles. Curators should ingest every sensitive
-account and byte, and use protocol-specific adapters where post-CPI balance
-accounting is required. See [`MERKLE_STRATEGY_POLICY.md`](MERKLE_STRATEGY_POLICY.md).
+account and byte, and use typed protocol adapters where post-CPI balance
+accounting is required. The shipped token-balance adapter is a reference custody
+adapter, not a lending/swap/LP integration. See
+[`MERKLE_STRATEGY_POLICY.md`](MERKLE_STRATEGY_POLICY.md) and
+[`STRATEGY_ADAPTERS.md`](STRATEGY_ADAPTERS.md).
 
 ## Tranche Administration
 

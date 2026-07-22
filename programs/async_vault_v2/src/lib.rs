@@ -283,7 +283,15 @@ pub mod async_vault_v2 {
         instructions::manage_vault_with_merkle_verification::handler(ctx, args)
     }
 
-    /// Creates a primary-asset position token account for an approved venue.
+    /// Executes a Merkle-authorized, balance-checked SPL token position move.
+    pub fn manage_vault_with_token_balance_adapter(
+        ctx: Context<ManageVaultWithTokenBalanceAdapter>,
+        args: ManageVaultWithTokenBalanceAdapterArgs,
+    ) -> Result<()> {
+        instructions::manage_vault_with_token_balance_adapter::handler(ctx, args)
+    }
+
+    /// Creates a primary or approved-secondary position token account for an approved venue.
     pub fn create_venue_position(ctx: Context<CreateVenuePosition>) -> Result<()> {
         instructions::create_venue_position::handler(ctx)
     }

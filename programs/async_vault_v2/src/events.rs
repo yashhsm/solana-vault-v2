@@ -1,5 +1,28 @@
 use anchor_lang::prelude::*;
 
+use crate::state::TokenBalanceAdapterAction;
+
+#[event]
+pub struct TokenBalanceAdapterExecuted {
+    pub vault: Pubkey,
+    pub strategy_policy: Pubkey,
+    pub strategist: Pubkey,
+    pub venue_entry: Pubkey,
+    pub vault_venue: Pubkey,
+    pub position: Pubkey,
+    pub asset_mint: Pubkey,
+    pub token_program: Pubkey,
+    pub policy_version: u64,
+    pub action: TokenBalanceAdapterAction,
+    pub amount: u64,
+    pub policy_max_amount: u64,
+    pub reserve_balance_before: u64,
+    pub reserve_balance_after: u64,
+    pub position_balance_before: u64,
+    pub position_balance_after: u64,
+    pub leaf: [u8; 32],
+}
+
 #[event]
 pub struct ProtocolFeeGovernanceInitialized {
     pub protocol_fee_config: Pubkey,

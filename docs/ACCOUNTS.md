@@ -334,8 +334,15 @@ Implemented instructions:
 - `manage_vault_with_merkle_verification`: manager/hot-manager execution for an
   active `VenueEntry`/`VaultVenue`. It reconstructs the canonical leaf from
   bounded instruction/account operators, verifies the proof, applies any
-  selected amount to the manager rolling limit, invokes the external program
-  with the vault PDA signer, and requires share supply to remain unchanged.
+  selected amount to the manager rolling limit, rejects writable vault-owned
+  token accounts, invokes the external program with the vault PDA signer, and
+  requires share supply to remain unchanged.
+- `manage_vault_with_token_balance_adapter`: manager/hot-manager typed custody
+  movement for the canonical reserve and `Position` token account. A separate
+  Merkle leaf binds the action, asset/account identities, venue records, policy
+  version, token program, and per-call maximum. The instruction enforces a
+  bounded dynamic amount, exact reserve/position deltas, share-supply
+  invariance, and primary or secondary ledger reconciliation.
 
 The full manifest and proofs remain off-chain. See
 [`MERKLE_STRATEGY_POLICY.md`](MERKLE_STRATEGY_POLICY.md) for the byte encoding,
@@ -373,6 +380,11 @@ Implemented instructions:
   assets from the position token account back to the primary reserve or
   secondary reserve and verifies exact post-transfer token-account deltas before
   decreasing `Position.amount`.
+- `manage_vault_with_token_balance_adapter`: provides the same canonical token
+  movement through a strategist-bound Merkle capability. It additionally
+  requires `Position.amount` to match the position token account before the
+  call, proof-binds a per-call maximum, and reconciles secondary
+  `VaultAsset.idle_balance`/`deployed_balance` after exact deltas.
 - `remove_venue_position`: curator-only, blocked when timelock is active,
   requires stored and token balances to be zero, closes the position token
   account, closes the `Position`, and decrements `VaultVenue.position_count`.

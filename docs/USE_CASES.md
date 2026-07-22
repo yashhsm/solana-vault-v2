@@ -143,8 +143,11 @@ Do not market these as current guarantees — they need program work first:
 - **Multi-asset deposits** — depositing several different assets for one share.
   Secondary-asset settlement is fail-closed until off-chain-priced NAV exists.
 - **Oracle-proven NAV / on-chain AUM proof** — NAV is signed by the operator.
-- **The vault calling external protocols itself** — there is no generic
-  cross-program execution; the operator deploys capital off-program.
+- **Fully accounted external-protocol strategies** — generic Merkle-authorized
+  CPI exists, but it cannot write vault-owned token accounts and does not infer
+  protocol economics. The typed token-balance reference adapter only moves
+  assets between canonical vault-owned reserve/position accounts. Lending,
+  swap, LP, and external-custody adapters still require protocol-specific code.
 - **Vault-of-vault / fund-of-funds on-chain** — no cycle prevention. The 1929
   investment-trust pyramid, and the modern JLP → lending-market liquidation
   cascade, are the cautionary tales.

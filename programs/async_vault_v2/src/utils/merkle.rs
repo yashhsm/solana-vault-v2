@@ -4,13 +4,15 @@ use solana_sha256_hasher::hash;
 use crate::{
     error::AsyncVaultError,
     state::{
-        MAX_MANAGE_CPI_ACCOUNTS, MAX_MANAGE_IX_DATA_LEN, MAX_MERKLE_PROOF_DEPTH,
-        MAX_POLICY_INGESTED_INSTRUCTION_BYTES, MAX_POLICY_OPERATORS,
+        TokenBalanceAdapterAction, MAX_MANAGE_CPI_ACCOUNTS, MAX_MANAGE_IX_DATA_LEN,
+        MAX_MERKLE_PROOF_DEPTH, MAX_POLICY_INGESTED_INSTRUCTION_BYTES, MAX_POLICY_OPERATORS,
     },
 };
 
 pub const STRATEGY_LEAF_DOMAIN: &[u8] = b"async-vault-v2/strategy-policy-leaf/v1";
 pub const STRATEGY_NODE_DOMAIN: &[u8] = b"async-vault-v2/strategy-policy-node/v1";
+pub const TOKEN_BALANCE_ADAPTER_LEAF_DOMAIN: &[u8] =
+    b"async-vault-v2/token-balance-adapter-leaf/v1";
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq, Eq)]
 pub enum PolicyOperator {
@@ -37,6 +39,44 @@ pub struct StrategyLeaf<'a> {
     pub instruction_data: &'a [u8],
     pub accounts: &'a [PolicyAccountMeta],
     pub operators: &'a [PolicyOperator],
+}
+
+pub struct TokenBalanceAdapterLeaf {
+    pub vault: Pubkey,
+    pub strategist: Pubkey,
+    pub policy_version: u64,
+    pub venue_entry: Pubkey,
+    pub vault_venue: Pubkey,
+    pub target_program: Pubkey,
+    pub action: TokenBalanceAdapterAction,
+    pub asset_mint: Pubkey,
+    pub vault_token_account: Pubkey,
+    pub position: Pubkey,
+    pub position_token_account: Pubkey,
+    pub policy_max_amount: u64,
+}
+
+pub fn hash_token_balance_adapter_leaf(input: TokenBalanceAdapterLeaf) -> [u8; 32] {
+    let action = match input.action {
+        TokenBalanceAdapterAction::Deploy => 0,
+        TokenBalanceAdapterAction::Pull => 1,
+    };
+    let mut bytes = Vec::with_capacity(TOKEN_BALANCE_ADAPTER_LEAF_DOMAIN.len() + 32 * 10 + 17);
+    bytes.extend_from_slice(TOKEN_BALANCE_ADAPTER_LEAF_DOMAIN);
+    bytes.extend_from_slice(crate::ID.as_ref());
+    bytes.extend_from_slice(input.vault.as_ref());
+    bytes.extend_from_slice(input.strategist.as_ref());
+    bytes.extend_from_slice(&input.policy_version.to_le_bytes());
+    bytes.extend_from_slice(input.venue_entry.as_ref());
+    bytes.extend_from_slice(input.vault_venue.as_ref());
+    bytes.extend_from_slice(input.target_program.as_ref());
+    bytes.push(action);
+    bytes.extend_from_slice(input.asset_mint.as_ref());
+    bytes.extend_from_slice(input.vault_token_account.as_ref());
+    bytes.extend_from_slice(input.position.as_ref());
+    bytes.extend_from_slice(input.position_token_account.as_ref());
+    bytes.extend_from_slice(&input.policy_max_amount.to_le_bytes());
+    hash(&bytes).to_bytes()
 }
 
 pub fn hash_strategy_leaf(input: StrategyLeaf<'_>) -> Result<([u8; 32], Option<u64>)> {
@@ -279,5 +319,63 @@ mod tests {
         ];
         let err = leaf(1, &data, &[], &operators).unwrap_err();
         assert_eq!(err, AsyncVaultError::PolicyIngestionLimitExceeded.into());
+    }
+
+    #[test]
+    fn token_balance_adapter_hash_matches_client_vector() {
+        let leaf = hash_token_balance_adapter_leaf(TokenBalanceAdapterLeaf {
+            vault: Pubkey::default(),
+            strategist: pubkey!("SysvarC1ock11111111111111111111111111111111"),
+            policy_version: 7,
+            venue_entry: pubkey!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
+            vault_venue: pubkey!("BPFLoaderUpgradeab1e11111111111111111111111"),
+            target_program: pubkey!("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+            action: TokenBalanceAdapterAction::Deploy,
+            asset_mint: pubkey!("Vote111111111111111111111111111111111111111"),
+            vault_token_account: pubkey!("Stake11111111111111111111111111111111111111"),
+            position: pubkey!("ComputeBudget111111111111111111111111111111"),
+            position_token_account: pubkey!("SysvarC1ock11111111111111111111111111111111"),
+            policy_max_amount: 250,
+        });
+        let encoded = leaf
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        assert_eq!(
+            encoded,
+            "4c0920146de6af2cfc03030a24a4cf10d835a76bdafccc86394602928c4f066e"
+        );
+    }
+
+    #[test]
+    fn token_balance_adapter_leaf_binds_action_accounts_version_and_maximum() {
+        let baseline = || TokenBalanceAdapterLeaf {
+            vault: Pubkey::new_from_array([1; 32]),
+            strategist: Pubkey::new_from_array([2; 32]),
+            policy_version: 1,
+            venue_entry: Pubkey::new_from_array([3; 32]),
+            vault_venue: Pubkey::new_from_array([4; 32]),
+            target_program: Pubkey::new_from_array([5; 32]),
+            action: TokenBalanceAdapterAction::Deploy,
+            asset_mint: Pubkey::new_from_array([6; 32]),
+            vault_token_account: Pubkey::new_from_array([7; 32]),
+            position: Pubkey::new_from_array([8; 32]),
+            position_token_account: Pubkey::new_from_array([9; 32]),
+            policy_max_amount: 100,
+        };
+        let baseline_hash = hash_token_balance_adapter_leaf(baseline());
+
+        let mut changed = baseline();
+        changed.action = TokenBalanceAdapterAction::Pull;
+        assert_ne!(hash_token_balance_adapter_leaf(changed), baseline_hash);
+        let mut changed = baseline();
+        changed.position_token_account = Pubkey::new_from_array([10; 32]);
+        assert_ne!(hash_token_balance_adapter_leaf(changed), baseline_hash);
+        let mut changed = baseline();
+        changed.policy_version = 2;
+        assert_ne!(hash_token_balance_adapter_leaf(changed), baseline_hash);
+        let mut changed = baseline();
+        changed.policy_max_amount = 101;
+        assert_ne!(hash_token_balance_adapter_leaf(changed), baseline_hash);
     }
 }

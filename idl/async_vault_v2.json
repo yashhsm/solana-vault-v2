@@ -1489,7 +1489,7 @@
     {
       "name": "create_venue_position",
       "docs": [
-        "Creates a primary-asset position token account for an approved venue."
+        "Creates a primary or approved-secondary position token account for an approved venue."
       ],
       "discriminator": [
         111,
@@ -3302,6 +3302,221 @@
           "type": {
             "defined": {
               "name": "ManageVaultWithMerkleVerificationArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "manage_vault_with_token_balance_adapter",
+      "docs": [
+        "Executes a Merkle-authorized, balance-checked SPL token position move."
+      ],
+      "discriminator": [
+        75,
+        227,
+        188,
+        252,
+        75,
+        144,
+        105,
+        224
+      ],
+      "accounts": [
+        {
+          "name": "strategist",
+          "signer": true
+        },
+        {
+          "name": "share_mint",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "share_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_mint"
+        },
+        {
+          "name": "vault_asset",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "venue_entry"
+        },
+        {
+          "name": "vault_venue",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  118,
+                  101,
+                  110,
+                  117,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              }
+            ]
+          }
+        },
+        {
+          "name": "strategy_policy",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  97,
+                  116,
+                  101,
+                  103,
+                  121,
+                  95,
+                  112,
+                  111,
+                  108,
+                  105,
+                  99,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "strategist"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault_token_account",
+          "writable": true
+        },
+        {
+          "name": "position_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              },
+              {
+                "kind": "account",
+                "path": "venue_entry"
+              },
+              {
+                "kind": "account",
+                "path": "asset_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "asset_token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "ManageVaultWithTokenBalanceAdapterArgs"
             }
           }
         }
@@ -5676,6 +5891,19 @@
         186,
         189
       ]
+    },
+    {
+      "name": "TokenBalanceAdapterExecuted",
+      "discriminator": [
+        150,
+        179,
+        228,
+        116,
+        226,
+        185,
+        14,
+        154
+      ]
     }
   ],
   "errors": [
@@ -6188,6 +6416,26 @@
       "code": 6101,
       "name": "InvalidProtocolFeeTimelock",
       "msg": "Protocol-fee governance timelock must be nonzero."
+    },
+    {
+      "code": 6102,
+      "name": "StrategyAdapterRequired",
+      "msg": "A typed strategy adapter is required for writable vault token accounts."
+    },
+    {
+      "code": 6103,
+      "name": "InvalidStrategyAdapter",
+      "msg": "Strategy adapter configuration or action is invalid."
+    },
+    {
+      "code": 6104,
+      "name": "StrategyAdapterAmountExceeded",
+      "msg": "Strategy adapter amount exceeds the Merkle-authorized per-call maximum."
+    },
+    {
+      "code": 6105,
+      "name": "PositionAccountingMismatch",
+      "msg": "Stored position accounting does not match the canonical token account."
     }
   ],
   "types": [
@@ -6592,6 +6840,48 @@
                 }
               }
             }
+          },
+          {
+            "name": "proof",
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ManageVaultWithTokenBalanceAdapterArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "policy_version",
+            "type": "u64"
+          },
+          {
+            "name": "action",
+            "type": {
+              "defined": {
+                "name": "TokenBalanceAdapterAction"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "policy_max_amount",
+            "docs": [
+              "Per-call bound committed into the Merkle leaf. `amount` remains dynamic."
+            ],
+            "type": "u64"
           },
           {
             "name": "proof",
@@ -7712,6 +8002,108 @@
           {
             "name": "paused",
             "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenBalanceAdapterAction",
+      "docs": [
+        "Direction of a balance-checked SPL token position adapter call."
+      ],
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Deploy"
+          },
+          {
+            "name": "Pull"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenBalanceAdapterExecuted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategy_policy",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategist",
+            "type": "pubkey"
+          },
+          {
+            "name": "venue_entry",
+            "type": "pubkey"
+          },
+          {
+            "name": "vault_venue",
+            "type": "pubkey"
+          },
+          {
+            "name": "position",
+            "type": "pubkey"
+          },
+          {
+            "name": "asset_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "token_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "policy_version",
+            "type": "u64"
+          },
+          {
+            "name": "action",
+            "type": {
+              "defined": {
+                "name": "TokenBalanceAdapterAction"
+              }
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "policy_max_amount",
+            "type": "u64"
+          },
+          {
+            "name": "reserve_balance_before",
+            "type": "u64"
+          },
+          {
+            "name": "reserve_balance_after",
+            "type": "u64"
+          },
+          {
+            "name": "position_balance_before",
+            "type": "u64"
+          },
+          {
+            "name": "position_balance_after",
+            "type": "u64"
+          },
+          {
+            "name": "leaf",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           }
         ]
       }

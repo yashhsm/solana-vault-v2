@@ -14,6 +14,7 @@ use crate::{
         StrategyPolicy, Vault, VaultVenue, VenueEntry, MAX_MANAGE_CPI_ACCOUNTS,
         MAX_MANAGE_IX_DATA_LEN, STRATEGY_POLICY_SEED, VAULT_CONFIG_SEED, VAULT_VENUE_SEED,
     },
+    utils::assert_generic_strategy_has_no_vault_token_writes,
     utils::merkle::{
         hash_strategy_leaf, verify_strategy_proof, PolicyAccountMeta, PolicyOperator, StrategyLeaf,
     },
@@ -146,6 +147,11 @@ pub fn handler<'info>(
         operators: &args.operators,
     })?;
     verify_strategy_proof(leaf, &args.proof, ctx.accounts.strategy_policy.merkle_root)?;
+
+    // The generic path proves capability shape only. Any writable token account
+    // controlled by the vault must use a typed adapter with mandatory balance and
+    // ledger reconciliation.
+    assert_generic_strategy_has_no_vault_token_writes(vault_key, ctx.remaining_accounts)?;
 
     if let Some(amount) = manager_limit_amount {
         ctx.accounts

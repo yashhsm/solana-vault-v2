@@ -5,6 +5,7 @@ use anchor_lang::{
 use anchor_spl::token_2022::spl_token_2022::{
     self,
     extension::{BaseStateWithExtensions, StateWithExtensions},
+    state::Account as SplTokenAccount,
 };
 use vault_common::FeeType;
 
@@ -18,6 +19,26 @@ use crate::{
 };
 
 pub mod merkle;
+
+pub fn assert_generic_strategy_has_no_vault_token_writes<'info>(
+    vault: Pubkey,
+    accounts: &'info [AccountInfo<'info>],
+) -> Result<()> {
+    for account in accounts.iter().filter(|account| account.is_writable) {
+        if *account.owner != anchor_spl::token::ID && *account.owner != spl_token_2022::ID {
+            continue;
+        }
+        let data = account.try_borrow_data()?;
+        if let Ok(token_account) = StateWithExtensions::<SplTokenAccount>::unpack(&data) {
+            require_keys_neq!(
+                token_account.base.owner,
+                vault,
+                AsyncVaultError::StrategyAdapterRequired
+            );
+        }
+    }
+    Ok(())
+}
 
 #[derive(Clone, Copy)]
 pub struct TrancheRequestInfo {

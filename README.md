@@ -32,7 +32,8 @@ The current implementation focuses on testable on-chain primitives:
 - approved secondary-asset records and per-asset ledgers
 - externally managed withdrawal opt-in and venue approval metadata
 - strategist-bound Merkle capability roots for approved venue CPIs
-- constrained SPL token-account position stubs
+- typed, Merkle-authorized token-balance adapters with exact position-ledger reconciliation
+- constrained SPL token-account positions for primary and approved-secondary assets
 - senior/junior tranche accounting and tranche-scoped async requests
 - primary-asset instant deposit/redeem flows
 - vault-level protocol fee bps with upgrade-authority bootstrap, timelocked
@@ -132,8 +133,8 @@ flowchart TD
 - `StrategyPolicy`: optional per-vault, per-strategist Merkle root and version
   used to authorize selected instruction bytes, accounts, and privileges before
   the vault PDA signs one venue CPI.
-- `Position`: constrained SPL token-account custody stub for manager deploy/pull
-  tests.
+- `Position`: constrained SPL token-account custody ledger for manager deploy/pull
+  and typed adapter reconciliation.
 - `TrancheConfig`: senior/junior share-mint config, NAV snapshots, request
   limits, FIFO lane counters, and junior-ratio guard data.
 - `PendingVaultUpdate`, `PendingFeeUpdate`, `PendingExtensionUpdate`,
@@ -166,7 +167,8 @@ Implemented or partially implemented:
 - Phase 3 externally managed withdrawal opt-in, venue metadata, per-vault venue
   approvals, constrained position stubs, and an opt-in Merkle-verified venue CPI
   boundary with strategist roots, timelocked root rotation, bounded operators,
-  rolling limits, and a post-CPI share-supply invariant.
+  rolling limits, a post-CPI share-supply invariant, and a typed token-balance
+  reference adapter that reconciles primary and secondary position ledgers.
 - Phase 4 tranche config, waterfall accounting, tranche-scoped requests,
   request bounds, junior-ratio guards, lane-local FIFO queue counters, and
   tranche/performance-fee incompatibility guards.
@@ -178,7 +180,8 @@ Not implemented yet:
 
 - USD-normalized multi-asset NAV
 - oracle adapters and oracle-backed NAV validation
-- protocol-specific venue adapters and arbitrary-CPI position accounting
+- protocol-specific lending/swap/LP adapters beyond the token-balance reference
+  adapter, plus arbitrary external-protocol position accounting
 - external protocol custody accounting
 - vault-in-vault cycle prevention
 - secondary-asset or tranche-aware instant settlement
@@ -226,6 +229,7 @@ cargo test -p integration-tests
 - [Account Layout](docs/ACCOUNTS.md)
 - [Integration Mapping](docs/INTEGRATION.md)
 - [Merkle Strategy Policy](docs/MERKLE_STRATEGY_POLICY.md)
+- [Strategy Adapters](docs/STRATEGY_ADAPTERS.md)
 - [Spec Coverage](docs/SPEC_COVERAGE.md)
 - [Upstream Test Map](docs/UPSTREAM_TEST_MAP.md)
 - [Sequence Diagrams](programs/async_vault_v2/docs/SEQUENCES.md)

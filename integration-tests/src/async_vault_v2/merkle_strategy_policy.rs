@@ -2,17 +2,20 @@ use anchor_spl::token;
 use async_vault_v2_client::{
     lite::SendTransaction,
     merkle_strategy_policy::{
-        build_strategy_policy_merkle_tree, hash_strategy_policy_leaf, normalize_policy_accounts,
-        strategy_policy_proof, StrategyPolicyAccountMeta, StrategyPolicyLeaf,
-        StrategyPolicyMerkleTree,
+        build_strategy_policy_merkle_tree, hash_strategy_policy_leaf,
+        hash_token_balance_adapter_leaf, normalize_policy_accounts, strategy_policy_proof,
+        StrategyPolicyAccountMeta, StrategyPolicyLeaf, StrategyPolicyMerkleTree,
+        TokenBalanceAdapterLeaf,
     },
     sdk::program_id,
-    ApproveVaultVenueBuilder, CancelStrategyPolicyUpdateBuilder, CloseStrategyPolicyBuilder,
-    ExecuteStrategyPolicyUpdateBuilder, InitializeStrategyPolicyBuilder, InitializeVaultBuilder,
-    ManageVaultWithMerkleVerificationBuilder, PauseStrategyPolicyBuilder,
-    PendingStrategyPolicyUpdate, PolicyOperator, QueueStrategyPolicyUpdateBuilder,
-    RegisterVenueBuilder, StrategyPolicy, StrategyPolicyUpdateArgs, UpdateStrategyPolicyBuilder,
-    UpdateVaultBuilder, Vault, VenueType,
+    AddVaultAssetBuilder, ApproveVaultVenueBuilder, CancelStrategyPolicyUpdateBuilder,
+    CloseStrategyPolicyBuilder, CreateVenuePositionBuilder, ExecuteStrategyPolicyUpdateBuilder,
+    InitializeStrategyPolicyBuilder, InitializeVaultBuilder,
+    ManageVaultWithMerkleVerificationBuilder, ManageVaultWithTokenBalanceAdapterBuilder,
+    PauseStrategyPolicyBuilder, PendingStrategyPolicyUpdate, PolicyOperator, Position,
+    QueueStrategyPolicyUpdateBuilder, RegisterVenueBuilder, StrategyPolicy,
+    StrategyPolicyUpdateArgs, TokenBalanceAdapterAction, UpdateStrategyPolicyBuilder,
+    UpdateVaultBuilder, Vault, VaultAsset, VenueType,
 };
 use litesvm::LiteSVM;
 use solana_sdk::{
@@ -26,21 +29,29 @@ use solana_sdk::{
 
 use crate::{
     async_helper_functions::{
-        assert_error_code, create_ata, get_token_account_amount, helper_mint_to,
+        assert_error_code, create_ata, create_mint, get_token_account_amount, helper_mint_to,
         set_up_async_vault_v2,
     },
     async_vault_v2::constants::{
-        MERKLE_PROOF_INVALID, REENTRANT_STRATEGY_CALL, ROLLING_LIMIT_EXCEEDED,
-        SHARE_SUPPLY_CHANGED, STALE_STRATEGY_POLICY_VERSION, STRATEGY_POLICY_PAUSED,
-        TIMELOCK_NOT_READY, TIMELOCK_REQUIRED,
+        INVALID_STRATEGY_ADAPTER, MERKLE_PROOF_INVALID, POSITION_ACCOUNTING_MISMATCH,
+        REENTRANT_STRATEGY_CALL, ROLLING_LIMIT_EXCEEDED, SHARE_SUPPLY_CHANGED,
+        STALE_STRATEGY_POLICY_VERSION, STRATEGY_ADAPTER_AMOUNT_EXCEEDED, STRATEGY_ADAPTER_REQUIRED,
+        STRATEGY_POLICY_PAUSED, TIMELOCK_NOT_READY, TIMELOCK_REQUIRED,
     },
 };
 
 const STRATEGY_POLICY_SEED: &[u8] = b"strategy_policy";
 const VENUE_ENTRY_SEED: &[u8] = b"venue";
 const VAULT_VENUE_SEED: &[u8] = b"vault_venue";
+const POSITION_SEED: &[u8] = b"position";
+const POSITION_TOKEN_SEED: &[u8] = b"position_token";
+const ASSET_CONFIG_SEED: &[u8] = b"asset";
+const ASSET_RESERVE_SEED: &[u8] = b"asset_reserve";
+const ASSET_PENDING_SEED: &[u8] = b"asset_pending";
 const FIRST_AMOUNT: u64 = 250;
 const SECOND_AMOUNT: u64 = 100;
+const DEPLOY_POLICY_MAX_AMOUNT: u64 = 300;
+const PULL_POLICY_MAX_AMOUNT: u64 = 200;
 
 struct PolicyFixture {
     svm: LiteSVM,
@@ -55,6 +66,8 @@ struct PolicyFixture {
     venue_entry: Pubkey,
     vault_venue: Pubkey,
     strategy_policy: Pubkey,
+    position: Pubkey,
+    position_token_account: Pubkey,
     operators: Vec<PolicyOperator>,
     first_transfer: Instruction,
     second_transfer: Instruction,
@@ -64,6 +77,8 @@ struct PolicyFixture {
     first_leaf: [u8; 32],
     second_leaf: [u8; 32],
     mint_leaf: [u8; 32],
+    deploy_leaf: [u8; 32],
+    pull_leaf: [u8; 32],
 }
 
 fn setup_policy_fixture() -> PolicyFixture {
@@ -92,7 +107,7 @@ fn setup_policy_fixture() -> PolicyFixture {
         .share_mint(share_mint.pubkey())
         .vault(vault)
         .rolling_limit_window_slots(1_000)
-        .manager_rolling_limit(300)
+        .manager_rolling_limit(1_000)
         .instruction()
         .send_transaction(&mut svm, &authority.pubkey(), &[&authority])
         .expect("manager rolling limit should be configured");
@@ -185,6 +200,41 @@ fn setup_policy_fixture() -> PolicyFixture {
         .send_transaction(&mut svm, &payer.pubkey(), &[&payer, &authority])
         .expect("vault venue approval should succeed");
 
+    let position = Pubkey::find_program_address(
+        &[
+            POSITION_SEED,
+            vault.as_ref(),
+            venue_entry.as_ref(),
+            asset_mint.pubkey().as_ref(),
+        ],
+        &program_id(),
+    )
+    .0;
+    let position_token_account = Pubkey::find_program_address(
+        &[
+            POSITION_TOKEN_SEED,
+            vault.as_ref(),
+            venue_entry.as_ref(),
+            asset_mint.pubkey().as_ref(),
+        ],
+        &program_id(),
+    )
+    .0;
+    CreateVenuePositionBuilder::new()
+        .payer(payer.pubkey())
+        .authority(authority.pubkey())
+        .vault(vault)
+        .asset_mint(asset_mint.pubkey())
+        .vault_asset(None)
+        .venue_entry(venue_entry)
+        .vault_venue(vault_venue)
+        .position(position)
+        .position_token_account(position_token_account)
+        .asset_token_program(token::ID)
+        .instruction()
+        .send_transaction(&mut svm, &payer.pubkey(), &[&payer, &authority])
+        .expect("canonical strategy position should be created");
+
     let strategy_policy = Pubkey::find_program_address(
         &[
             STRATEGY_POLICY_SEED,
@@ -227,7 +277,44 @@ fn setup_policy_fixture() -> PolicyFixture {
         PolicyOperator::IngestAccount { index: 2 },
     ];
     let mint_leaf = policy_leaf(vault, authority.pubkey(), &mint_shares, &mint_operators);
-    let tree = build_strategy_policy_merkle_tree(vec![first_leaf, second_leaf, mint_leaf]).unwrap();
+    let deploy_leaf = hash_token_balance_adapter_leaf(TokenBalanceAdapterLeaf::for_async_vault(
+        vault,
+        authority.pubkey(),
+        1,
+        venue_entry,
+        vault_venue,
+        token::ID,
+        TokenBalanceAdapterAction::Deploy,
+        asset_mint.pubkey(),
+        reserve,
+        position,
+        position_token_account,
+        DEPLOY_POLICY_MAX_AMOUNT,
+    ))
+    .unwrap();
+    let pull_leaf = hash_token_balance_adapter_leaf(TokenBalanceAdapterLeaf::for_async_vault(
+        vault,
+        authority.pubkey(),
+        1,
+        venue_entry,
+        vault_venue,
+        token::ID,
+        TokenBalanceAdapterAction::Pull,
+        asset_mint.pubkey(),
+        reserve,
+        position,
+        position_token_account,
+        PULL_POLICY_MAX_AMOUNT,
+    ))
+    .unwrap();
+    let tree = build_strategy_policy_merkle_tree(vec![
+        first_leaf,
+        second_leaf,
+        mint_leaf,
+        deploy_leaf,
+        pull_leaf,
+    ])
+    .unwrap();
     UpdateStrategyPolicyBuilder::new()
         .authority(authority.pubkey())
         .vault(vault)
@@ -253,6 +340,8 @@ fn setup_policy_fixture() -> PolicyFixture {
         venue_entry,
         vault_venue,
         strategy_policy,
+        position,
+        position_token_account,
         operators,
         first_transfer,
         second_transfer,
@@ -262,6 +351,8 @@ fn setup_policy_fixture() -> PolicyFixture {
         first_leaf,
         second_leaf,
         mint_leaf,
+        deploy_leaf,
+        pull_leaf,
     }
 }
 
@@ -373,17 +464,61 @@ fn manage_instruction(
         )
 }
 
+fn manage_token_balance_adapter(
+    fixture: &mut PolicyFixture,
+    action: TokenBalanceAdapterAction,
+    amount: u64,
+    policy_max_amount: u64,
+    proof: Vec<[u8; 32]>,
+) -> litesvm::types::TransactionResult {
+    ManageVaultWithTokenBalanceAdapterBuilder::new()
+        .strategist(fixture.authority.pubkey())
+        .share_mint(fixture.share_mint.pubkey())
+        .vault(fixture.vault)
+        .asset_mint(fixture.asset_mint.pubkey())
+        .vault_asset(None)
+        .venue_entry(fixture.venue_entry)
+        .vault_venue(fixture.vault_venue)
+        .strategy_policy(fixture.strategy_policy)
+        .position(fixture.position)
+        .vault_token_account(fixture.reserve)
+        .position_token_account(fixture.position_token_account)
+        .asset_token_program(token::ID)
+        .policy_version(1)
+        .action(action)
+        .amount(amount)
+        .policy_max_amount(policy_max_amount)
+        .proof(proof)
+        .instruction()
+        .send_transaction(
+            &mut fixture.svm,
+            &fixture.authority.pubkey(),
+            &[&fixture.authority],
+        )
+}
+
+fn read_position(fixture: &PolicyFixture) -> Position {
+    Position::from_bytes(
+        fixture
+            .svm
+            .get_account(&fixture.position)
+            .expect("position should exist")
+            .data(),
+    )
+    .unwrap()
+}
+
 #[test]
-fn valid_merkle_policy_executes_vault_signed_cpi_and_applies_manager_limit() {
+fn generic_policy_cannot_write_vault_owned_token_accounts() {
     let mut fixture = setup_policy_fixture();
     let first_transfer = fixture.first_transfer.clone();
     let proof = proof_for(&fixture.tree, fixture.first_leaf);
-    manage_transfer(&mut fixture, &first_transfer, proof)
-        .expect("valid policy proof should execute the token CPI");
+    let err = manage_transfer(&mut fixture, &first_transfer, proof).unwrap_err();
+    assert_error_code(&err, STRATEGY_ADAPTER_REQUIRED, "StrategyAdapterRequired");
 
     assert_eq!(
         get_token_account_amount(&fixture.svm.get_account(&fixture.reserve).unwrap()),
-        750
+        1_000
     );
     assert_eq!(
         get_token_account_amount(
@@ -392,10 +527,10 @@ fn valid_merkle_policy_executes_vault_signed_cpi_and_applies_manager_limit() {
                 .get_account(&fixture.recipient_token_account)
                 .unwrap()
         ),
-        FIRST_AMOUNT
+        0
     );
     let vault = Vault::from_bytes(fixture.svm.get_account(&fixture.vault).unwrap().data()).unwrap();
-    assert_eq!(vault.manager_window_amount, FIRST_AMOUNT);
+    assert_eq!(vault.manager_window_amount, 0);
     let policy = StrategyPolicy::from_bytes(
         fixture
             .svm
@@ -459,21 +594,456 @@ fn paused_policy_blocks_an_otherwise_valid_proof() {
 }
 
 #[test]
-fn valid_second_leaf_still_cannot_exceed_the_manager_rolling_limit() {
+fn every_generic_transfer_leaf_requires_a_typed_adapter() {
     let mut fixture = setup_policy_fixture();
-    let first_transfer = fixture.first_transfer.clone();
-    let first_proof = proof_for(&fixture.tree, fixture.first_leaf);
-    manage_transfer(&mut fixture, &first_transfer, first_proof).unwrap();
-
-    fixture.svm.expire_blockhash();
     let second_transfer = fixture.second_transfer.clone();
     let second_proof = proof_for(&fixture.tree, fixture.second_leaf);
     let err = manage_transfer(&mut fixture, &second_transfer, second_proof).unwrap_err();
-    assert_error_code(&err, ROLLING_LIMIT_EXCEEDED, "RollingLimitExceeded");
+    assert_error_code(&err, STRATEGY_ADAPTER_REQUIRED, "StrategyAdapterRequired");
+    assert_eq!(
+        get_token_account_amount(&fixture.svm.get_account(&fixture.reserve).unwrap()),
+        1_000
+    );
+    let vault = Vault::from_bytes(fixture.svm.get_account(&fixture.vault).unwrap().data()).unwrap();
+    assert_eq!(vault.manager_window_amount, 0);
+}
+
+#[test]
+fn token_balance_adapter_deploys_and_pulls_with_exact_accounting() {
+    let mut fixture = setup_policy_fixture();
+    let deploy_proof = proof_for(&fixture.tree, fixture.deploy_leaf);
+    manage_token_balance_adapter(
+        &mut fixture,
+        TokenBalanceAdapterAction::Deploy,
+        FIRST_AMOUNT,
+        DEPLOY_POLICY_MAX_AMOUNT,
+        deploy_proof,
+    )
+    .expect("authorized deploy should succeed");
+
     assert_eq!(
         get_token_account_amount(&fixture.svm.get_account(&fixture.reserve).unwrap()),
         750
     );
+    assert_eq!(
+        get_token_account_amount(
+            &fixture
+                .svm
+                .get_account(&fixture.position_token_account)
+                .unwrap()
+        ),
+        FIRST_AMOUNT
+    );
+    assert_eq!(read_position(&fixture).amount, FIRST_AMOUNT);
+
+    fixture.svm.expire_blockhash();
+    let pull_proof = proof_for(&fixture.tree, fixture.pull_leaf);
+    manage_token_balance_adapter(
+        &mut fixture,
+        TokenBalanceAdapterAction::Pull,
+        SECOND_AMOUNT,
+        PULL_POLICY_MAX_AMOUNT,
+        pull_proof,
+    )
+    .expect("authorized pull should succeed");
+
+    assert_eq!(
+        get_token_account_amount(&fixture.svm.get_account(&fixture.reserve).unwrap()),
+        850
+    );
+    assert_eq!(
+        get_token_account_amount(
+            &fixture
+                .svm
+                .get_account(&fixture.position_token_account)
+                .unwrap()
+        ),
+        150
+    );
+    assert_eq!(read_position(&fixture).amount, 150);
+    let vault = Vault::from_bytes(fixture.svm.get_account(&fixture.vault).unwrap().data()).unwrap();
+    assert_eq!(vault.manager_window_amount, FIRST_AMOUNT + SECOND_AMOUNT);
+}
+
+#[test]
+fn token_balance_adapter_reconciles_secondary_asset_ledgers() {
+    let mut fixture = setup_policy_fixture();
+    let secondary_mint = Keypair::new();
+    create_mint(
+        &mut fixture.svm,
+        &fixture.authority,
+        &secondary_mint,
+        &token::ID,
+    );
+    let vault_asset = Pubkey::find_program_address(
+        &[
+            ASSET_CONFIG_SEED,
+            fixture.vault.as_ref(),
+            secondary_mint.pubkey().as_ref(),
+        ],
+        &program_id(),
+    )
+    .0;
+    let reserve = Pubkey::find_program_address(
+        &[
+            ASSET_RESERVE_SEED,
+            fixture.vault.as_ref(),
+            secondary_mint.pubkey().as_ref(),
+        ],
+        &program_id(),
+    )
+    .0;
+    let pending_vault = Pubkey::find_program_address(
+        &[
+            ASSET_PENDING_SEED,
+            fixture.vault.as_ref(),
+            secondary_mint.pubkey().as_ref(),
+        ],
+        &program_id(),
+    )
+    .0;
+    AddVaultAssetBuilder::new()
+        .payer(fixture.payer.pubkey())
+        .authority(fixture.authority.pubkey())
+        .vault(fixture.vault)
+        .asset_mint(secondary_mint.pubkey())
+        .vault_asset(vault_asset)
+        .reserve(reserve)
+        .pending_vault(pending_vault)
+        .asset_token_program(token::ID)
+        .deposit_cap(1_000)
+        .instruction()
+        .send_transaction(
+            &mut fixture.svm,
+            &fixture.payer.pubkey(),
+            &[&fixture.payer, &fixture.authority],
+        )
+        .expect("secondary asset should be approved");
+    helper_mint_to(
+        &mut fixture.svm,
+        &secondary_mint.pubkey(),
+        &reserve,
+        &fixture.authority,
+        500,
+        &token::ID,
+    );
+    let mut vault_asset_account = fixture.svm.get_account(&vault_asset).unwrap();
+    let mut vault_asset_state = VaultAsset::from_bytes(vault_asset_account.data()).unwrap();
+    vault_asset_state.idle_balance = 500;
+    vault_asset_account.data = borsh::to_vec(&vault_asset_state).unwrap();
+    fixture
+        .svm
+        .set_account(vault_asset, vault_asset_account)
+        .unwrap();
+
+    let primary_proof = proof_for(&fixture.tree, fixture.deploy_leaf);
+    let err = ManageVaultWithTokenBalanceAdapterBuilder::new()
+        .strategist(fixture.authority.pubkey())
+        .share_mint(fixture.share_mint.pubkey())
+        .vault(fixture.vault)
+        .asset_mint(fixture.asset_mint.pubkey())
+        .vault_asset(Some(vault_asset))
+        .venue_entry(fixture.venue_entry)
+        .vault_venue(fixture.vault_venue)
+        .strategy_policy(fixture.strategy_policy)
+        .position(fixture.position)
+        .vault_token_account(fixture.reserve)
+        .position_token_account(fixture.position_token_account)
+        .asset_token_program(token::ID)
+        .policy_version(1)
+        .action(TokenBalanceAdapterAction::Deploy)
+        .amount(1)
+        .policy_max_amount(DEPLOY_POLICY_MAX_AMOUNT)
+        .proof(primary_proof)
+        .instruction()
+        .send_transaction(
+            &mut fixture.svm,
+            &fixture.authority.pubkey(),
+            &[&fixture.authority],
+        )
+        .unwrap_err();
+    assert_error_code(&err, INVALID_STRATEGY_ADAPTER, "InvalidStrategyAdapter");
+
+    let position = Pubkey::find_program_address(
+        &[
+            POSITION_SEED,
+            fixture.vault.as_ref(),
+            fixture.venue_entry.as_ref(),
+            secondary_mint.pubkey().as_ref(),
+        ],
+        &program_id(),
+    )
+    .0;
+    let position_token_account = Pubkey::find_program_address(
+        &[
+            POSITION_TOKEN_SEED,
+            fixture.vault.as_ref(),
+            fixture.venue_entry.as_ref(),
+            secondary_mint.pubkey().as_ref(),
+        ],
+        &program_id(),
+    )
+    .0;
+    CreateVenuePositionBuilder::new()
+        .payer(fixture.payer.pubkey())
+        .authority(fixture.authority.pubkey())
+        .vault(fixture.vault)
+        .asset_mint(secondary_mint.pubkey())
+        .vault_asset(Some(vault_asset))
+        .venue_entry(fixture.venue_entry)
+        .vault_venue(fixture.vault_venue)
+        .position(position)
+        .position_token_account(position_token_account)
+        .asset_token_program(token::ID)
+        .instruction()
+        .send_transaction(
+            &mut fixture.svm,
+            &fixture.payer.pubkey(),
+            &[&fixture.payer, &fixture.authority],
+        )
+        .expect("secondary position should be created");
+
+    let deploy_leaf = hash_token_balance_adapter_leaf(TokenBalanceAdapterLeaf::for_async_vault(
+        fixture.vault,
+        fixture.authority.pubkey(),
+        2,
+        fixture.venue_entry,
+        fixture.vault_venue,
+        token::ID,
+        TokenBalanceAdapterAction::Deploy,
+        secondary_mint.pubkey(),
+        reserve,
+        position,
+        position_token_account,
+        300,
+    ))
+    .unwrap();
+    let pull_leaf = hash_token_balance_adapter_leaf(TokenBalanceAdapterLeaf::for_async_vault(
+        fixture.vault,
+        fixture.authority.pubkey(),
+        2,
+        fixture.venue_entry,
+        fixture.vault_venue,
+        token::ID,
+        TokenBalanceAdapterAction::Pull,
+        secondary_mint.pubkey(),
+        reserve,
+        position,
+        position_token_account,
+        100,
+    ))
+    .unwrap();
+    let tree = build_strategy_policy_merkle_tree(vec![deploy_leaf, pull_leaf]).unwrap();
+    fixture.svm.expire_blockhash();
+    UpdateStrategyPolicyBuilder::new()
+        .authority(fixture.authority.pubkey())
+        .vault(fixture.vault)
+        .strategy_policy(fixture.strategy_policy)
+        .args(StrategyPolicyUpdateArgs {
+            merkle_root: tree.root,
+            paused: false,
+        })
+        .instruction()
+        .send_transaction(
+            &mut fixture.svm,
+            &fixture.authority.pubkey(),
+            &[&fixture.authority],
+        )
+        .expect("secondary adapter policy should activate");
+
+    let call = |fixture: &mut PolicyFixture,
+                action: TokenBalanceAdapterAction,
+                amount: u64,
+                max: u64,
+                proof: Vec<[u8; 32]>| {
+        ManageVaultWithTokenBalanceAdapterBuilder::new()
+            .strategist(fixture.authority.pubkey())
+            .share_mint(fixture.share_mint.pubkey())
+            .vault(fixture.vault)
+            .asset_mint(secondary_mint.pubkey())
+            .vault_asset(Some(vault_asset))
+            .venue_entry(fixture.venue_entry)
+            .vault_venue(fixture.vault_venue)
+            .strategy_policy(fixture.strategy_policy)
+            .position(position)
+            .vault_token_account(reserve)
+            .position_token_account(position_token_account)
+            .asset_token_program(token::ID)
+            .policy_version(2)
+            .action(action)
+            .amount(amount)
+            .policy_max_amount(max)
+            .proof(proof)
+            .instruction()
+            .send_transaction(
+                &mut fixture.svm,
+                &fixture.authority.pubkey(),
+                &[&fixture.authority],
+            )
+    };
+    call(
+        &mut fixture,
+        TokenBalanceAdapterAction::Deploy,
+        200,
+        300,
+        proof_for(&tree, deploy_leaf),
+    )
+    .expect("secondary deploy should succeed");
+    fixture.svm.expire_blockhash();
+    call(
+        &mut fixture,
+        TokenBalanceAdapterAction::Pull,
+        50,
+        100,
+        proof_for(&tree, pull_leaf),
+    )
+    .expect("secondary pull should succeed");
+
+    assert_eq!(
+        get_token_account_amount(&fixture.svm.get_account(&reserve).unwrap()),
+        350
+    );
+    assert_eq!(
+        get_token_account_amount(&fixture.svm.get_account(&position_token_account).unwrap()),
+        150
+    );
+    let position_state =
+        Position::from_bytes(fixture.svm.get_account(&position).unwrap().data()).unwrap();
+    assert_eq!(position_state.amount, 150);
+    let asset_state =
+        VaultAsset::from_bytes(fixture.svm.get_account(&vault_asset).unwrap().data()).unwrap();
+    assert_eq!(asset_state.idle_balance, 350);
+    assert_eq!(asset_state.deployed_balance, 150);
+    assert_eq!(asset_state.manager_window_amount, 250);
+    let vault_state =
+        Vault::from_bytes(fixture.svm.get_account(&fixture.vault).unwrap().data()).unwrap();
+    assert_eq!(vault_state.manager_window_amount, 0);
+}
+
+#[test]
+fn token_balance_adapter_rejects_amount_above_leaf_maximum_without_side_effects() {
+    let mut fixture = setup_policy_fixture();
+    let proof = proof_for(&fixture.tree, fixture.deploy_leaf);
+    let err = manage_token_balance_adapter(
+        &mut fixture,
+        TokenBalanceAdapterAction::Deploy,
+        DEPLOY_POLICY_MAX_AMOUNT + 1,
+        DEPLOY_POLICY_MAX_AMOUNT,
+        proof,
+    )
+    .unwrap_err();
+    assert_error_code(
+        &err,
+        STRATEGY_ADAPTER_AMOUNT_EXCEEDED,
+        "StrategyAdapterAmountExceeded",
+    );
+    assert_eq!(
+        get_token_account_amount(&fixture.svm.get_account(&fixture.reserve).unwrap()),
+        1_000
+    );
+    assert_eq!(read_position(&fixture).amount, 0);
+    let vault = Vault::from_bytes(fixture.svm.get_account(&fixture.vault).unwrap().data()).unwrap();
+    assert_eq!(vault.manager_window_amount, 0);
+}
+
+#[test]
+fn token_balance_adapter_proof_binds_the_declared_maximum() {
+    let mut fixture = setup_policy_fixture();
+    let proof = proof_for(&fixture.tree, fixture.deploy_leaf);
+    let err = manage_token_balance_adapter(
+        &mut fixture,
+        TokenBalanceAdapterAction::Deploy,
+        100,
+        DEPLOY_POLICY_MAX_AMOUNT - 1,
+        proof,
+    )
+    .unwrap_err();
+    assert_error_code(&err, MERKLE_PROOF_INVALID, "MerkleProofInvalid");
+    assert_eq!(
+        get_token_account_amount(&fixture.svm.get_account(&fixture.reserve).unwrap()),
+        1_000
+    );
+    assert_eq!(read_position(&fixture).amount, 0);
+}
+
+#[test]
+fn token_balance_adapter_fails_closed_on_position_ledger_drift() {
+    let mut fixture = setup_policy_fixture();
+    let mut position_account = fixture.svm.get_account(&fixture.position).unwrap();
+    let mut position = Position::from_bytes(position_account.data()).unwrap();
+    position.amount = 1;
+    position_account.data = borsh::to_vec(&position).unwrap();
+    fixture
+        .svm
+        .set_account(fixture.position, position_account)
+        .unwrap();
+
+    let proof = proof_for(&fixture.tree, fixture.deploy_leaf);
+    let err = manage_token_balance_adapter(
+        &mut fixture,
+        TokenBalanceAdapterAction::Deploy,
+        100,
+        DEPLOY_POLICY_MAX_AMOUNT,
+        proof,
+    )
+    .unwrap_err();
+    assert_error_code(
+        &err,
+        POSITION_ACCOUNTING_MISMATCH,
+        "PositionAccountingMismatch",
+    );
+    assert_eq!(
+        get_token_account_amount(&fixture.svm.get_account(&fixture.reserve).unwrap()),
+        1_000
+    );
+    assert_eq!(
+        get_token_account_amount(
+            &fixture
+                .svm
+                .get_account(&fixture.position_token_account)
+                .unwrap()
+        ),
+        0
+    );
+}
+
+#[test]
+fn token_balance_adapter_enforces_cumulative_manager_limit() {
+    let mut fixture = setup_policy_fixture();
+    let calls = [
+        (TokenBalanceAdapterAction::Deploy, 300),
+        (TokenBalanceAdapterAction::Pull, 200),
+        (TokenBalanceAdapterAction::Deploy, 300),
+        (TokenBalanceAdapterAction::Pull, 200),
+    ];
+    for (action, amount) in calls {
+        let (leaf, max) = match action {
+            TokenBalanceAdapterAction::Deploy => (fixture.deploy_leaf, DEPLOY_POLICY_MAX_AMOUNT),
+            TokenBalanceAdapterAction::Pull => (fixture.pull_leaf, PULL_POLICY_MAX_AMOUNT),
+        };
+        let proof = proof_for(&fixture.tree, leaf);
+        manage_token_balance_adapter(&mut fixture, action, amount, max, proof)
+            .expect("operation within cumulative limit should succeed");
+        fixture.svm.expire_blockhash();
+    }
+
+    let proof = proof_for(&fixture.tree, fixture.deploy_leaf);
+    let err = manage_token_balance_adapter(
+        &mut fixture,
+        TokenBalanceAdapterAction::Deploy,
+        1,
+        DEPLOY_POLICY_MAX_AMOUNT,
+        proof,
+    )
+    .unwrap_err();
+    assert_error_code(&err, ROLLING_LIMIT_EXCEEDED, "RollingLimitExceeded");
+    assert_eq!(
+        get_token_account_amount(&fixture.svm.get_account(&fixture.reserve).unwrap()),
+        800
+    );
+    assert_eq!(read_position(&fixture).amount, 200);
+    let vault = Vault::from_bytes(fixture.svm.get_account(&fixture.vault).unwrap().data()).unwrap();
+    assert_eq!(vault.manager_window_amount, 1_000);
 }
 
 #[test]

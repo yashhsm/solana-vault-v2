@@ -206,6 +206,14 @@ pub enum AsyncVaultError {
     StaleProtocolFeeGovernanceVersion,
     #[msg("Protocol-fee governance timelock must be nonzero.")]
     InvalidProtocolFeeTimelock,
+    #[msg("A typed strategy adapter is required for writable vault token accounts.")]
+    StrategyAdapterRequired,
+    #[msg("Strategy adapter configuration or action is invalid.")]
+    InvalidStrategyAdapter,
+    #[msg("Strategy adapter amount exceeds the Merkle-authorized per-call maximum.")]
+    StrategyAdapterAmountExceeded,
+    #[msg("Stored position accounting does not match the canonical token account.")]
+    PositionAccountingMismatch,
 }
 
 impl From<vault_common::VaultMathError> for AsyncVaultError {

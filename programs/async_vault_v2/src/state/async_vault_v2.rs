@@ -337,6 +337,15 @@ pub struct Position {
     pub bump: u8,
 }
 
+/// Direction of a balance-checked SPL token position adapter call.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug, InitSpace, PartialEq, Eq)]
+pub enum TokenBalanceAdapterAction {
+    /// Move underlying tokens from the canonical vault reserve into its canonical position.
+    Deploy,
+    /// Return underlying tokens from the canonical position to the canonical vault reserve.
+    Pull,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PositionLedger {
     pub position_amount: u64,
