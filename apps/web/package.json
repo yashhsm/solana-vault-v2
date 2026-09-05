@@ -18,7 +18,7 @@
         "@solana-program/token-2022": "^0.12.0",
         "@solana/connector": "^0.2.4",
         "@solana/design-system": "^1.0.1",
-        "@solana/kit": "^6.10.0",
+        "@solana/kit": "^8.1.0",
         "@sendai/solana-vault-v2": "workspace:*",
         "@tanstack/react-query": "^5.90.20",
         "@vercel/analytics": "^2.0.1",
